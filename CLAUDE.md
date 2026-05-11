@@ -42,36 +42,23 @@ iframe** draaien. Twee installatie-paden:
 - De extensie ontvangt context-info via URL-params: `host`, `instance`,
   `erpUrl`, `lang`.
 
-## Bouwmeester is alleen referentie
+## Bouwmeester — geen lokale afhankelijkheid
 
-In een aparte map naast deze repo staat `bouwmeester/` — een andere Y-App
-extensie van dezelfde organisatie. **Die mag je lezen, maar niet wijzigen.**
+Bouwmeester is een *andere* Y-App extensie van dezelfde organisatie. We
+hebben geen lokale kopie en hoeven er niet in te kijken. De eigen
+`bridge.ts`, `vite.config.ts` en workflows zijn al geschreven in Sprint 1
+en zijn volledig zelfstandig.
 
-Wat we **bestuderen** in Bouwmeester:
-- `src/bridge.ts` — de postMessage-implementatie voor Y-App-context
-- `vite.config.ts` — GitHub Pages base-path, dev-poort 5174
-- `.github/workflows/` — deploy workflow
-- `package.json` — welke dependency-versies werken in Y-App
-
-Wat we **doen** met die informatie:
-- We schrijven onze **eigen** `src/bridge.ts` in deze repo, gebaseerd op
-  hoe Bouwmeester het doet
-- We schrijven onze **eigen** `vite.config.ts`, `package.json`,
-  workflow — geïnspireerd op Bouwmeester, niet gekopieerd zonder denken
-
-We committen niks naar de Bouwmeester-repo. We hebben geen werkbomen, geen
-imports, geen build-afhankelijkheden van Bouwmeester. Alles wat we nodig
-hebben uit Bouwmeester nemen we **handmatig over en passen aan**.
+Visueel meekijken hoe Bouwmeester dingen doet in de Y-App UI (interactie-
+patronen, layout) mag als referentie voor onze eigen keuzes, maar we zoeken
+niet in broncode of klonen niets.
 
 ## Andere referentie-extensies
 
-Ook publieke broncode beschikbaar:
+Voor vragen over file-upload, handtekeningveld e.d.:
 
 - **KG Planning** — `https://impertio-studio.github.io/Y_App-extension-kg-planning/`
 - **Projectplanning 3BM** — `https://piyton.github.io/yapp-ext-3BMEng-projectplanning/`
-
-Als Bouwmeester onvoldoende laat zien hoe iets moet (bv. file-upload,
-handtekening-veld), check dan deze.
 
 ## Repo-structuur (deze repo, op zichzelf)
 
@@ -111,9 +98,9 @@ Bouwmeester, geen monorepo-tooling.
 
 | Onderdeel | Keuze |
 |---|---|
-| Framework | React 18 + Vite + TypeScript (volg Bouwmeester's versies) |
+| Framework | React 19 + Vite 8 + TypeScript 5 |
 | Dev-poort | **5174** (Y-App custom URL-conventie) |
-| Styling | Wat Bouwmeester gebruikt — controleer en volg, geen eigen smaak |
+| Styling | Tailwind v4 (`@import "tailwindcss"`) — zie bestaande componenten |
 | State | `useReducer` of Zustand — niet Redux |
 | Tekening | Native React SVG (geen externe canvas-lib) |
 | PDF | `jspdf` + `svg2pdf.js` |
@@ -179,29 +166,25 @@ Upload-volgorde: eerst PDF + foto's → dan Quotation aanmaken met file-referenc
 
 ## Werkwijze voor jou (Claude Code)
 
-1. **Werk uitsluitend in deze repo.** Niet schrijven in `../bouwmeester/`
-   of waar dan ook anders. Alleen lezen daar.
-2. **Lees eerst** Bouwmeester (`bridge.ts`, `vite.config.ts`, workflows),
-   `docs/seed-data.md` en `src/data/seed-types.ts`. Pas daarna code schrijven.
-3. **Documenteer de bridge-API** in `docs/bridge-api.md` zodra je 'm hebt
-   bestudeerd. Dit is ons contract voor de rest van het project.
-4. **Maak een TODO-lijst** voor elke feature, werk die top-down af.
-5. **Vraag bij twijfel** over bridge-methodes en ERPNext-schemas — niet gokken.
-6. **Pure functions** voor geometry/mapping, gescheiden van React. Test met
+1. **Werk uitsluitend in deze repo.** Niet schrijven buiten
+   `ext-keukenblad-opname/`. Niet in Bouwmeester, niet in de Y-App repo.
+2. **Lees eerst** de relevante sprint-doc in `docs/`, daarna
+   `src/data/seed-types.ts`. De bridge-API staat al in `docs/bridge-api.md`.
+3. **Pure functions** voor geometry/mapping, gescheiden van React. Test met
    Vitest.
-7. **Commit per logische stap** — liever 10 kleine dan 1 grote.
+4. **Vraag bij twijfel** over bridge-methodes en ERPNext-schemas — niet gokken.
+5. **Commit per logische stap** — liever 10 kleine dan 1 grote.
 
 ## Wat NIET te doen
 
-- **Niets wijzigen buiten deze repo.** Niet in `../bouwmeester/`, niet in
-  een Y-App repo, nergens anders.
-- Geen monorepo-setup, geen npm workspaces, geen symlinks naar Bouwmeester
+- **Niets wijzigen buiten deze repo.** Niet in Bouwmeester, niet in Y-App.
+- Geen Bouwmeester-broncode zoeken, klonen of lezen
+- Geen monorepo-setup, geen npm workspaces, geen symlinks
 - Geen prijzen in de opname-flow (komen uit kantoor)
 - Geen externe authenticatie of credentials (bridge regelt alles)
-- Geen Tailwind/styling-keuzes verzinnen als Bouwmeester iets anders gebruikt
 - Geen nieuwe dependencies zonder eerst te vragen
 - Geen Excel-export — vervangt juist Excel
 
-## Volgende stap (eerste taak)
+## Huidige sprint
 
-Zie `docs/kickoff.md`.
+Sprint 3a — zie `docs/sprint-3a-tekening.md`.
