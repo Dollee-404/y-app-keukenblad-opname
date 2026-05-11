@@ -113,3 +113,28 @@ export function segmentMidden(outline: Point[], i: number): Point {
   const q = outline[(i + 1) % n];
   return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
 }
+
+/** Omtrek (mm) — som van alle segmentLengtes. */
+export function omtrek(outline: Point[]): number {
+  return segmentLengtes(outline).reduce((s, l) => s + l, 0);
+}
+
+/** Telling van bladen + totaal oppervlakte. */
+export function bladTellingTotaal(bladen: Array<{ lengte: number; breedte: number; outline?: Point[] }>): {
+  aantal: number;
+  totaalM2: number;
+} {
+  const totaalM2 = bladen.reduce((s, b) => {
+    const outline = b.outline ?? rechthoekOutline(b.lengte, b.breedte);
+    // Oppervlakte via shoelace-formule (werkt voor elk polygoon)
+    const n = outline.length;
+    let area = 0;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      area += outline[i].x * outline[j].y;
+      area -= outline[j].x * outline[i].y;
+    }
+    return s + Math.abs(area) / 2 / 1_000_000;
+  }, 0);
+  return { aantal: bladen.length, totaalM2 };
+}

@@ -4,6 +4,8 @@ import {
   segmentLengtes,
   knipHoekUit,
   bewerkSegmentLengte,
+  omtrek,
+  bladTellingTotaal,
 } from "./bladHelpers";
 
 describe("rechthoekOutline", () => {
@@ -49,6 +51,40 @@ describe("knipHoekUit", () => {
     const o = rechthoekOutline(600, 400);
     const result = knipHoekUit(o, 0, 50, 80);
     expect(result).toHaveLength(6);
+  });
+});
+
+describe("omtrek", () => {
+  it("rechthoek 1958×1001: omtrek = 2*(1958+1001) = 5918", () => {
+    const o = rechthoekOutline(1958, 1001);
+    expect(omtrek(o)).toBeCloseTo(5918);
+  });
+
+  it("vierkant 500×500: omtrek = 2000", () => {
+    expect(omtrek(rechthoekOutline(500, 500))).toBeCloseTo(2000);
+  });
+});
+
+describe("bladTellingTotaal", () => {
+  it("lege lijst geeft aantal=0 en totaalM2=0", () => {
+    const result = bladTellingTotaal([]);
+    expect(result.aantal).toBe(0);
+    expect(result.totaalM2).toBeCloseTo(0);
+  });
+
+  it("één rechthoek 1958×1001: 1.96 m²", () => {
+    const result = bladTellingTotaal([{ lengte: 1958, breedte: 1001 }]);
+    expect(result.aantal).toBe(1);
+    expect(result.totaalM2).toBeCloseTo(1958 * 1001 / 1_000_000, 4);
+  });
+
+  it("twee bladen: totaal klopt op", () => {
+    const result = bladTellingTotaal([
+      { lengte: 2000, breedte: 600 },
+      { lengte: 1000, breedte: 500 },
+    ]);
+    expect(result.aantal).toBe(2);
+    expect(result.totaalM2).toBeCloseTo((2000 * 600 + 1000 * 500) / 1_000_000, 4);
   });
 });
 

@@ -18,7 +18,9 @@ export type OpnameAction =
   | { type: "SET_UW_REFERENTIE"; payload: string }
   | { type: "BLAD_TOEVOEGEN"; blad: Blad }
   | { type: "BLAD_VERWIJDEREN"; id: string }
-  | { type: "BLAD_BIJWERKEN"; id: string; patch: Partial<Blad> };
+  | { type: "BLAD_BIJWERKEN"; id: string; patch: Partial<Blad> }
+  | { type: "SEGMENT_SELECTEREN"; bladId: string; segmentIndex: number }
+  | { type: "SEGMENT_DESELECTEREN" };
 
 export function opnameReducer(state: Opname, action: OpnameAction): Opname {
   switch (action.type) {
@@ -110,5 +112,9 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
           b.id === action.id ? { ...b, ...action.patch } : b
         ),
       };
+
+    case "SEGMENT_SELECTEREN":
+    case "SEGMENT_DESELECTEREN":
+      return state;
   }
 }
