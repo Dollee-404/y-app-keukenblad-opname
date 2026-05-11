@@ -31,6 +31,7 @@ export default function Step1Klant({ state, dispatch }: Props) {
   const [zoekFout, setZoekFout] = useState<string | null>(null);
 
   // — Aanmaken —
+  const [klantType, setKlantType] = useState<"Company" | "Individual">("Company");
   const [aanmaakLaden, setAanmaakLaden] = useState(false);
   const [aanmaakFout, setAanmaakFout] = useState<string | null>(null);
   const [aanmaakOk, setAanmaakOk] = useState<string | null>(null);
@@ -99,6 +100,7 @@ export default function Step1Klant({ state, dispatch }: Props) {
     try {
       const result = await createCustomerWithAddress({
         naam,
+        type: klantType,
         straat: state.opdrachtgever.straat,
         postcodePlaats: state.opdrachtgever.postcodePlaats,
         email: state.opdrachtgever.email,
@@ -245,6 +247,22 @@ export default function Step1Klant({ state, dispatch }: Props) {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Zakelijk / Particulier toggle */}
+            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+              {(["Company", "Individual"] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setKlantType(type)}
+                  className={[
+                    "flex-1 min-h-[44px] text-sm font-medium transition-colors",
+                    klantType === type ? "bg-teal-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50",
+                  ].join(" ")}
+                >
+                  {type === "Company" ? "Zakelijk" : "Particulier"}
+                </button>
+              ))}
+            </div>
+
             {(["naam", "straat", "postcodePlaats"] as const).map((veld) => (
               <div key={veld}>
                 <label className={labelKlasse}>

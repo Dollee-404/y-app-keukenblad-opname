@@ -10,6 +10,7 @@ export interface CustomerSummary {
 
 export interface NieuweKlant {
   naam: string;
+  type: "Company" | "Individual";
   straat: string;
   postcodePlaats: string;
   email?: string;
@@ -46,7 +47,7 @@ function parsePostcodePlaats(waarde: string): { pincode: string; city: string } 
 export async function createCustomerWithAddress(klant: NieuweKlant): Promise<{ name: string }> {
   const customer = await createDocument<{ name: string }>("Customer", {
     customer_name: klant.naam,
-    customer_type: "Company",
+    customer_type: klant.type,
     ...(klant.email ? { email_id: klant.email } : {}),
     ...(klant.telefoon ? { mobile_no: klant.telefoon } : {}),
   });
