@@ -10,6 +10,10 @@ interface Props {
   onDrawerOpen?: () => void;
 }
 
+function toonLabel(s: string): string {
+  return s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
 export default function CanvasToolbar({
   blad,
   state,
@@ -70,7 +74,7 @@ export default function CanvasToolbar({
         )}
         {blad ? (
           <>
-            <span style={{ fontSize: 13, fontWeight: 500, color: "#0f172a" }}>{blad.label}</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: "#0f172a" }}>{toonLabel(blad.label)}</span>
             {(werkstuk || matSoort) && (
               <span
                 style={{

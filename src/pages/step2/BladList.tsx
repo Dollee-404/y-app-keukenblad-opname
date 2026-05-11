@@ -30,6 +30,10 @@ function BladThumbnail({ blad }: { blad: Blad }) {
   );
 }
 
+function toonLabel(s: string): string {
+  return s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
 export default function BladList({ bladen, selectedId, onSelect, onVerwijder, onNieuw }: Props) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const totaalM2 = bladen.reduce((s, b) => s + oppervlakteM2(b), 0);
@@ -86,7 +90,7 @@ export default function BladList({ bladen, selectedId, onSelect, onVerwijder, on
                   style={{ padding: "8px 10px", background: "#fef2f2" }}
                 >
                   <span style={{ flex: 1, fontSize: 11, color: "#991b1b" }}>
-                    '{blad.label}' verwijderen?
+                    '{toonLabel(blad.label)}' verwijderen?
                   </span>
                   <button
                     onClick={() => setConfirmId(null)}
@@ -132,7 +136,7 @@ export default function BladList({ bladen, selectedId, onSelect, onVerwijder, on
                       <BladThumbnail blad={blad} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-700 truncate">{blad.label}</p>
+                      <p className="text-xs font-semibold text-slate-700 truncate">{toonLabel(blad.label)}</p>
                       <p className="text-xs text-slate-400">{blad.lengte} × {blad.breedte} × {blad.dikte} mm</p>
                     </div>
                   </button>
