@@ -1,4 +1,4 @@
-import { fetchList } from "../bridge";
+import { fetchList, createDocument } from "../bridge";
 
 export interface CustomerSummary {
   name: string;
@@ -17,7 +17,7 @@ const FIELDS = [
 ];
 
 export async function searchCustomers(query: string): Promise<CustomerSummary[]> {
-  const raw = await fetchList<CustomerSummary>("Customer", {
+  return fetchList<CustomerSummary>("Customer", {
     fields: FIELDS,
     filters: [
       ["customer_name", "like", `%${query}%`],
@@ -26,5 +26,11 @@ export async function searchCustomers(query: string): Promise<CustomerSummary[]>
     limit_page_length: 20,
     order_by: "customer_name asc",
   });
-  return raw;
+}
+
+export async function createCustomer(naam: string): Promise<{ name: string }> {
+  return createDocument<{ name: string }>("Customer", {
+    customer_name: naam,
+    customer_type: "Company",
+  });
 }
