@@ -61,3 +61,48 @@ describe("opnameReducer", () => {
     expect(result.uwReferentie).toBe("ZIJLMANS - VAN VLIMMEREN");
   });
 });
+
+describe("opnameReducer — bladen", () => {
+  const testBlad = {
+    id: "b-1",
+    label: "BLAD A",
+    werkstukType: "Bladdeel A" as const,
+    categorie: "WB" as const,
+    lengte: 1958,
+    breedte: 1001,
+    dikte: 20 as const,
+    randen: [],
+  };
+
+  it("BLAD_TOEVOEGEN voegt blad toe", () => {
+    const result = opnameReducer(initialState, { type: "BLAD_TOEVOEGEN", blad: testBlad });
+    expect(result.bladen).toHaveLength(1);
+    expect(result.bladen[0].id).toBe("b-1");
+  });
+
+  it("BLAD_VERWIJDEREN verwijdert het juiste blad", () => {
+    const metBlad = opnameReducer(initialState, { type: "BLAD_TOEVOEGEN", blad: testBlad });
+    const result = opnameReducer(metBlad, { type: "BLAD_VERWIJDEREN", id: "b-1" });
+    expect(result.bladen).toHaveLength(0);
+  });
+
+  it("BLAD_VERWIJDEREN laat andere bladen intact", () => {
+    const blad2 = { ...testBlad, id: "b-2", label: "BLAD B" };
+    let s = opnameReducer(initialState, { type: "BLAD_TOEVOEGEN", blad: testBlad });
+    s = opnameReducer(s, { type: "BLAD_TOEVOEGEN", blad: blad2 });
+    s = opnameReducer(s, { type: "BLAD_VERWIJDEREN", id: "b-1" });
+    expect(s.bladen).toHaveLength(1);
+    expect(s.bladen[0].id).toBe("b-2");
+  });
+
+  it("BLAD_BIJWERKEN past alleen het opgegeven blad aan", () => {
+    const metBlad = opnameReducer(initialState, { type: "BLAD_TOEVOEGEN", blad: testBlad });
+    const result = opnameReducer(metBlad, {
+      type: "BLAD_BIJWERKEN",
+      id: "b-1",
+      patch: { lengte: 2000 },
+    });
+    expect(result.bladen[0].lengte).toBe(2000);
+    expect(result.bladen[0].breedte).toBe(1001);
+  });
+});
