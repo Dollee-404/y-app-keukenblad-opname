@@ -11,13 +11,15 @@ interface Props {
   state: Opname;
   huidigStap: number;
   onStap: (nr: number) => void;
+  onNaarStap1?: () => void;
 }
 
-export default function TopBar({ state, huidigStap, onStap }: Props) {
+export default function TopBar({ state, huidigStap, onStap, onNaarStap1 }: Props) {
   const klantNaam =
     state.afleveradres?.naam ||
     state.opdrachtgever?.naam ||
-    "Geen klant";
+    null;
+  const geenKlant = !klantNaam;
   const opdrachtgever = state.opdrachtgever?.naam || "";
   const datum = state.datum
     ? new Date(state.datum).toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -30,14 +32,35 @@ export default function TopBar({ state, huidigStap, onStap }: Props) {
     >
       {/* Links: klant-blok + separator + step-pills */}
       <div className="flex items-center" style={{ gap: 16 }}>
-        <div style={{ lineHeight: 1.2 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: "#0f172a" }}>{klantNaam}</div>
-          {(opdrachtgever || datum) && (
-            <div style={{ fontSize: 11, color: "#64748b" }}>
-              {[opdrachtgever, datum].filter(Boolean).join(" · ")}
+        {geenKlant ? (
+          <button
+            onClick={onNaarStap1}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: onNaarStap1 ? "pointer" : "default",
+              lineHeight: 1.2,
+              textAlign: "left",
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>
+              Nog geen klant gekozen
             </div>
-          )}
-        </div>
+            {onNaarStap1 && (
+              <div style={{ fontSize: 11, color: "#0d9488" }}>→ Ga naar stap 1</div>
+            )}
+          </button>
+        ) : (
+          <div style={{ lineHeight: 1.2 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "#0f172a" }}>{klantNaam}</div>
+            {(opdrachtgever || datum) && (
+              <div style={{ fontSize: 11, color: "#64748b" }}>
+                {[opdrachtgever, datum].filter(Boolean).join(" · ")}
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ width: "0.5px", height: 24, background: "rgba(0,0,0,0.12)" }} />
 

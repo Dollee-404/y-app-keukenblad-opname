@@ -79,22 +79,10 @@ export default function BladInfoPanel({ blad, state }: Props) {
 
       {/* Footer: Sparingen */}
       <div style={{ padding: "10px 14px", borderTop: "0.5px solid rgba(0,0,0,0.08)" }}>
-        <div style={{ ...labelStyle, marginBottom: 6 }}>Sparingen</div>
-        <button
-          disabled
-          style={{
-            width: "100%",
-            padding: 6,
-            border: "0.5px dashed #94a3b8",
-            borderRadius: 4,
-            background: "white",
-            fontSize: 11,
-            color: "#94a3b8",
-            cursor: "not-allowed",
-          }}
-        >
-          + Sparing toevoegen
-        </button>
+        <div style={{ ...labelStyle, marginBottom: 4 }}>Sparingen</div>
+        <p style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>
+          Beschikbaar in sprint 4
+        </p>
       </div>
     </div>
   );

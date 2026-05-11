@@ -33,7 +33,7 @@ export default function NieuwBladDialog({ onToevoegen, onAnnuleer }: Props) {
   }, []);
 
   function defaultLabel(ws: WerkstukType): string {
-    return ws.toUpperCase();
+    return ws;
   }
 
   function handleToevoegen() {

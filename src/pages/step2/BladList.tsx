@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Blad } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import { rechthoekOutline } from "../../drawing/bladHelpers";
@@ -30,7 +31,17 @@ function BladThumbnail({ blad }: { blad: Blad }) {
 }
 
 export default function BladList({ bladen, selectedId, onSelect, onVerwijder, onNieuw }: Props) {
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const totaalM2 = bladen.reduce((s, b) => s + oppervlakteM2(b), 0);
+
+  function handleVerwijderKlik(id: string) {
+    setConfirmId(id);
+  }
+
+  function handleBevestig(id: string) {
+    setConfirmId(null);
+    onVerwijder(id);
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -68,32 +79,72 @@ export default function BladList({ bladen, selectedId, onSelect, onVerwijder, on
         <ul className="flex-1 overflow-y-auto divide-y divide-slate-100">
           {bladen.map((blad) => (
             <li key={blad.id}>
-              <div className="flex items-center">
-                <button
-                  onClick={() => onSelect(blad.id)}
-                  className={[
-                    "flex-1 flex items-center gap-3 px-3 py-2 min-h-[52px] text-left transition-colors",
-                    selectedId === blad.id
-                      ? "bg-teal-50 border-l-2 border-teal-500"
-                      : "hover:bg-slate-50",
-                  ].join(" ")}
+              {confirmId === blad.id ? (
+                /* Inline bevestigings-rij */
+                <div
+                  className="flex items-center gap-2"
+                  style={{ padding: "8px 10px", background: "#fef2f2" }}
                 >
-                  <div className="bg-slate-100 rounded p-1">
-                    <BladThumbnail blad={blad} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-700 truncate">{blad.label}</p>
-                    <p className="text-xs text-slate-400">{blad.lengte} × {blad.breedte} × {blad.dikte} mm</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => onVerwijder(blad.id)}
-                  className="px-3 py-2 min-h-[52px] text-slate-400 hover:text-red-500 transition-colors text-lg"
-                  aria-label={`Verwijder ${blad.label}`}
-                >
-                  ×
-                </button>
-              </div>
+                  <span style={{ flex: 1, fontSize: 11, color: "#991b1b" }}>
+                    '{blad.label}' verwijderen?
+                  </span>
+                  <button
+                    onClick={() => setConfirmId(null)}
+                    style={{
+                      fontSize: 11,
+                      padding: "4px 8px",
+                      border: "0.5px solid #cbd5e1",
+                      borderRadius: 4,
+                      background: "white",
+                      cursor: "pointer",
+                      color: "#475569",
+                    }}
+                  >
+                    Nee
+                  </button>
+                  <button
+                    onClick={() => handleBevestig(blad.id)}
+                    style={{
+                      fontSize: 11,
+                      padding: "4px 8px",
+                      border: "none",
+                      borderRadius: 4,
+                      background: "#dc2626",
+                      color: "white",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Ja, verwijder
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <button
+                    onClick={() => onSelect(blad.id)}
+                    className={[
+                      "flex-1 flex items-center gap-3 px-3 py-2 min-h-[52px] text-left transition-colors",
+                      selectedId === blad.id
+                        ? "bg-teal-50 border-l-2 border-teal-500"
+                        : "hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    <div className="bg-slate-100 rounded p-1">
+                      <BladThumbnail blad={blad} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-700 truncate">{blad.label}</p>
+                      <p className="text-xs text-slate-400">{blad.lengte} × {blad.breedte} × {blad.dikte} mm</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleVerwijderKlik(blad.id)}
+                    className="px-3 py-2 min-h-[52px] text-slate-300 hover:text-red-400 transition-colors text-lg"
+                    aria-label={`Verwijder ${blad.label}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

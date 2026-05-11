@@ -11,7 +11,12 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col bg-slate-50">
-      <TopBar state={state} huidigStap={huidigStap} onStap={setHuidigStap} />
+      <TopBar
+        state={state}
+        huidigStap={huidigStap}
+        onStap={setHuidigStap}
+        onNaarStap1={() => setHuidigStap(1)}
+      />
 
       {huidigStap === 1 && (
         <main className="flex-1 overflow-y-auto">

@@ -195,17 +195,20 @@ export default function Canvas({
         <line x1={tick2X1} y1={tick2Y1} x2={tick2X2} y2={tick2Y2} />
         <line x1={p.x} y1={p.y} x2={lx1} y2={ly1} strokeDasharray={`${fontSizeMm * 0.3} ${fontSizeMm * 0.3}`} strokeOpacity={0.4} />
         <line x1={q.x} y1={q.y} x2={lx2} y2={ly2} strokeDasharray={`${fontSizeMm * 0.3} ${fontSizeMm * 0.3}`} strokeOpacity={0.4} />
-        {isActief && textBg && (
-          <rect
-            x={mx - fontSizeMm * 2.2}
-            y={my - fontSizeMm * 0.75}
-            width={fontSizeMm * 4.4}
-            height={fontSizeMm * 1.5}
-            fill={textBg}
-            rx={fontSizeMm * 0.3}
-            transform={`rotate(${textAngle} ${mx} ${my})`}
-          />
-        )}
+        {isActief && textBg && (() => {
+          const pillW = fontSizeMm * (String(lengte).length * 0.65 + 1.4);
+          return (
+            <rect
+              x={mx - pillW / 2}
+              y={my - fontSizeMm * 0.75}
+              width={pillW}
+              height={fontSizeMm * 1.5}
+              fill={textBg}
+              rx={fontSizeMm * 0.3}
+              transform={`rotate(${textAngle} ${mx} ${my})`}
+            />
+          );
+        })()}
         <text
           x={mx}
           y={my}
