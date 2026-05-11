@@ -1,0 +1,101 @@
+import type { Blad, Opname } from "../../data/seed-types";
+import { oppervlakteM2 } from "../../data/seed-types";
+import { rechthoekOutline, segmentLengtes } from "../../drawing/bladHelpers";
+
+interface Props {
+  blad: Blad | null;
+  state: Opname;
+}
+
+function omtrekMm(blad: Blad): number {
+  const outline = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
+  return Math.round(segmentLengtes(outline).reduce((s, l) => s + l, 0));
+}
+
+export default function BladInfoPanel({ blad, state }: Props) {
+  const matSoort = blad?.materiaalOverride?.soort ?? state.materiaal?.soort ?? "—";
+  const dikte = blad?.dikte ?? "—";
+  const kleur = blad?.materiaalOverride?.kleur ?? state.materiaal?.kleur ?? "—";
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10,
+    color: "#94a3b8",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    marginBottom: 2,
+  };
+  const valueStyle: React.CSSProperties = { fontSize: 11, fontWeight: 500, color: "#0f172a" };
+  const subStyle: React.CSSProperties = { fontSize: 11, color: "#64748b" };
+
+  return (
+    <div
+      className="bg-white flex-shrink-0 flex flex-col h-full"
+      style={{ width: 220, borderLeft: "0.5px solid rgba(0,0,0,0.08)" }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between flex-shrink-0"
+        style={{ padding: "12px 14px", borderBottom: "0.5px solid rgba(0,0,0,0.08)" }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 500, color: "#0f172a" }}>Blad-info</span>
+        <span style={{ fontSize: 14, color: "#94a3b8", cursor: "pointer" }} title="Paneel inklappen">›</span>
+      </div>
+
+      {!blad ? (
+        <div className="flex-1 flex items-center justify-center px-4 text-center">
+          <p style={{ fontSize: 11, color: "#94a3b8" }}>Selecteer een blad om details te zien.</p>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto" style={{ padding: "12px 14px" }}>
+          {/* Werkstuk */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={labelStyle}>Werkstuk</div>
+            <div style={valueStyle}>{blad.werkstukType ?? "—"}</div>
+          </div>
+
+          {/* Materiaal */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={labelStyle}>Materiaal</div>
+            <div style={valueStyle}>{matSoort} · {dikte} mm</div>
+            <div style={subStyle}>{kleur}</div>
+          </div>
+
+          {/* Afmetingen */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={labelStyle}>Afmetingen</div>
+            <div style={valueStyle}>{blad.lengte} × {blad.breedte} mm</div>
+            <div style={subStyle}>
+              {oppervlakteM2(blad).toFixed(2)} m² · omtrek {omtrekMm(blad)} mm
+            </div>
+          </div>
+
+          {/* Randafwerking */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={labelStyle}>Randafwerking</div>
+            <div style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>Stap 3</div>
+          </div>
+        </div>
+      )}
+
+      {/* Footer: Sparingen */}
+      <div style={{ padding: "10px 14px", borderTop: "0.5px solid rgba(0,0,0,0.08)" }}>
+        <div style={{ ...labelStyle, marginBottom: 6 }}>Sparingen</div>
+        <button
+          disabled
+          style={{
+            width: "100%",
+            padding: 6,
+            border: "0.5px dashed #94a3b8",
+            borderRadius: 4,
+            background: "white",
+            fontSize: 11,
+            color: "#94a3b8",
+            cursor: "not-allowed",
+          }}
+        >
+          + Sparing toevoegen
+        </button>
+      </div>
+    </div>
+  );
+}

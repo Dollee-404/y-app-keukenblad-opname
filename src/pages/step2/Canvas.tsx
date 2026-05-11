@@ -1,5 +1,6 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import type { Blad, Point } from "../../data/seed-types";
+import { oppervlakteM2 } from "../../data/seed-types";
 import {
   rechthoekOutline,
   segmentLengtes,
@@ -9,47 +10,86 @@ import {
 } from "../../drawing/bladHelpers";
 
 interface Viewport { x: number; y: number; scale: number }
+
 interface Props {
   blad: Blad;
+  selectedSegmentIndex: number | null;
+  vp: Viewport;
+  onVpChange: (vp: Viewport | ((prev: Viewport) => Viewport)) => void;
+  onFitRef: React.MutableRefObject<(() => void) | null>;
   onSegmentTap: (segmentIndex: number) => void;
   onHoekTap: (cornerIndex: number) => void;
 }
 
-const DIM_OFFSET = 50;      // mm buiten het blad voor maatlijnen
-const DIM_TICK = 12;        // mm lengte van eindstreepjes
-const TAP_ZONE_THICKNESS = 24; // px hitzone dikte voor segmenten (in screen space)
+const DIM_OFFSET = 50;
+const DIM_TICK = 12;
+const TAP_ZONE_THICKNESS = 24;
 
 function pointsAttr(pts: Point[]): string {
   return pts.map(p => `${p.x},${p.y}`).join(" ");
 }
 
-export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
+export default function Canvas({
+  blad,
+  selectedSegmentIndex,
+  vp,
+  onVpChange,
+  onFitRef,
+  onSegmentTap,
+  onHoekTap,
+}: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [vp, setVp] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
 
   const outline = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
   const lengtes = segmentLengtes(outline);
   const bb = boundingBox(outline);
 
-  // Initial fit: schaal het blad zodat het in 80% van het canvas past
+  function computeFit(w: number, h: number): Viewport {
+    const margin = DIM_OFFSET * 2 + 20;
+    const bW = bb.maxX - bb.minX + margin * 2;
+    const bH = bb.maxY - bb.minY + margin * 2;
+    const scale = Math.min(w / bW, h / bH) * 0.85;
+    return {
+      x: w / 2 - ((bb.minX + bb.maxX) / 2) * scale,
+      y: h / 2 - ((bb.minY + bb.maxY) / 2) * scale,
+      scale,
+    };
+  }
+
+  // Initial fit
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
     if (rect.width === 0) return;
-    const margin = DIM_OFFSET * 2 + 20;
-    const bW = bb.maxX - bb.minX + margin * 2;
-    const bH = bb.maxY - bb.minY + margin * 2;
-    const scale = Math.min(rect.width / bW, rect.height / bH) * 0.85;
-    setVp({
-      x: rect.width / 2 - ((bb.minX + bb.maxX) / 2) * scale,
-      y: rect.height / 2 - ((bb.minY + bb.maxY) / 2) * scale,
-      scale,
-    });
+    onVpChange(computeFit(rect.width, rect.height));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blad.id]);
 
-  // ── Pointer-events voor pan + pinch-zoom ──
+  // ResizeObserver
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const ro = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 0 && height > 0) onVpChange(computeFit(width, height));
+    });
+    ro.observe(svg);
+    return () => ro.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blad.id]);
+
+  // Fit-to-screen callback voor toolbar
+  useEffect(() => {
+    onFitRef.current = () => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      onVpChange(computeFit(rect.width, rect.height));
+    };
+  });
+
+  // Pointer-events: pan + pinch-zoom
   const ptrs = useRef<Map<number, { x: number; y: number }>>(new Map());
   const panStart = useRef<{ ptId: number; vpX: number; vpY: number; cx: number; cy: number } | null>(null);
   const pinchStart = useRef<{ dist: number; scale: number; cx: number; cy: number } | null>(null);
@@ -61,42 +101,35 @@ export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
   const onPointerDown = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
     ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
-
     if (ptrs.current.size === 1) {
       panStart.current = { ptId: e.pointerId, vpX: vp.x, vpY: vp.y, cx: e.clientX, cy: e.clientY };
       pinchStart.current = null;
     } else if (ptrs.current.size === 2) {
       panStart.current = null;
       const [a, b] = [...ptrs.current.values()];
-      pinchStart.current = {
-        dist: dist2(a, b),
-        scale: vp.scale,
-        cx: (a.x + b.x) / 2,
-        cy: (a.y + b.y) / 2,
-      };
+      pinchStart.current = { dist: dist2(a, b), scale: vp.scale, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
     }
   }, [vp]);
 
   const onPointerMove = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
     if (!ptrs.current.has(e.pointerId)) return;
     ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
     if (ptrs.current.size === 1 && panStart.current) {
       const dx = e.clientX - panStart.current.cx;
       const dy = e.clientY - panStart.current.cy;
-      setVp({ x: panStart.current.vpX + dx, y: panStart.current.vpY + dy, scale: vp.scale });
+      onVpChange({ x: panStart.current.vpX + dx, y: panStart.current.vpY + dy, scale: vp.scale });
     } else if (ptrs.current.size === 2 && pinchStart.current) {
       const [a, b] = [...ptrs.current.values()];
       const newDist = dist2(a, b);
       const newScale = Math.max(0.05, Math.min(20, pinchStart.current.scale * (newDist / pinchStart.current.dist)));
       const { cx, cy } = pinchStart.current;
-      setVp(prev => ({
+      onVpChange(prev => ({
         scale: newScale,
         x: cx - (cx - prev.x) * (newScale / prev.scale),
         y: cy - (cy - prev.y) * (newScale / prev.scale),
       }));
     }
-  }, [vp.scale]);
+  }, [vp.scale, onVpChange]);
 
   const onPointerUp = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
     ptrs.current.delete(e.pointerId);
@@ -110,7 +143,7 @@ export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
     const rect = svgRef.current!.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;
-    setVp(prev => {
+    onVpChange(prev => {
       const newScale = Math.max(0.05, Math.min(20, prev.scale * factor));
       return {
         scale: newScale,
@@ -118,9 +151,9 @@ export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
         y: cy - (cy - prev.y) * (newScale / prev.scale),
       };
     });
-  }, []);
+  }, [onVpChange]);
 
-  // ── Maatvoering rendering ──
+  // Maatvoering rendering
   const fontSizeMm = Math.max(16, Math.min(50, Math.min(blad.lengte, blad.breedte) / 15));
   const strokeW = fontSizeMm * 0.05;
 
@@ -138,7 +171,6 @@ export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
     const ly2 = q.y + norm.y * offset;
     const mx = mid.x + norm.x * offset;
     const my = mid.y + norm.y * offset;
-
     const tickX1 = p.x + norm.x * (offset - DIM_TICK / 2);
     const tickY1 = p.y + norm.y * (offset - DIM_TICK / 2);
     const tickX2 = p.x + norm.x * (offset + DIM_TICK / 2);
@@ -150,26 +182,38 @@ export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
 
     const lengte = Math.round(lengtes[i]);
     const textAngle = Math.atan2(q.y - p.y, q.x - p.x) * (180 / Math.PI);
+    const isActief = i === selectedSegmentIndex;
+
+    const lineColor = isActief ? "#0d9488" : "#475569";
+    const textBg = isActief ? "#0d9488" : undefined;
+    const textColor = isActief ? "white" : "#1e293b";
 
     return (
-      <g key={`maat-${i}`} className="maatvoering" stroke="#475569" fill="none" strokeWidth={strokeW}>
-        {/* Maatlijn */}
+      <g key={`maat-${i}`} stroke={lineColor} fill="none" strokeWidth={strokeW}>
         <line x1={lx1} y1={ly1} x2={lx2} y2={ly2} />
-        {/* Eindstreepjes */}
         <line x1={tickX1} y1={tickY1} x2={tickX2} y2={tickY2} />
         <line x1={tick2X1} y1={tick2Y1} x2={tick2X2} y2={tick2Y2} />
-        {/* Hulplijnen van hoekpunt naar maatlijn */}
         <line x1={p.x} y1={p.y} x2={lx1} y2={ly1} strokeDasharray={`${fontSizeMm * 0.3} ${fontSizeMm * 0.3}`} strokeOpacity={0.4} />
         <line x1={q.x} y1={q.y} x2={lx2} y2={ly2} strokeDasharray={`${fontSizeMm * 0.3} ${fontSizeMm * 0.3}`} strokeOpacity={0.4} />
-        {/* Maatgetal */}
+        {isActief && textBg && (
+          <rect
+            x={mx - fontSizeMm * 2.2}
+            y={my - fontSizeMm * 0.75}
+            width={fontSizeMm * 4.4}
+            height={fontSizeMm * 1.5}
+            fill={textBg}
+            rx={fontSizeMm * 0.3}
+            transform={`rotate(${textAngle} ${mx} ${my})`}
+          />
+        )}
         <text
           x={mx}
           y={my}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill="#1e293b"
-          stroke="white"
-          strokeWidth={fontSizeMm * 0.25}
+          fill={textColor}
+          stroke={isActief ? "none" : "white"}
+          strokeWidth={isActief ? 0 : fontSizeMm * 0.25}
           paintOrder="stroke"
           fontSize={fontSizeMm}
           fontFamily="system-ui, sans-serif"
@@ -181,19 +225,43 @@ export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
     );
   }
 
-  // ── Tap-zone voor segment ──
+  // Segment highlight (groen vlak)
+  function renderSegmentHighlight(i: number) {
+    const n = outline.length;
+    const p = outline[i];
+    const q = outline[(i + 1) % n];
+    const norm = uitwaartsNormaal(outline, i);
+    const hw = (TAP_ZONE_THICKNESS / vp.scale) / 2;
+    const pts: Point[] = [
+      { x: p.x + norm.x * hw, y: p.y + norm.y * hw },
+      { x: q.x + norm.x * hw, y: q.y + norm.y * hw },
+      { x: q.x - norm.x * hw, y: q.y - norm.y * hw },
+      { x: p.x - norm.x * hw, y: p.y - norm.y * hw },
+    ];
+    return (
+      <polygon
+        key={`hl-${i}`}
+        points={pointsAttr(pts)}
+        fill="#0d9488"
+        fillOpacity={0.18}
+        stroke="none"
+        style={{ pointerEvents: "none" }}
+      />
+    );
+  }
+
+  // Tap-zones
   function renderSegmentTapZone(i: number) {
     const n = outline.length;
     const p = outline[i];
     const q = outline[(i + 1) % n];
-    const halfW = (TAP_ZONE_THICKNESS / vp.scale) / 2;
+    const hw = (TAP_ZONE_THICKNESS / vp.scale) / 2;
     const norm = uitwaartsNormaal(outline, i);
-    // Breedte keer twee zijden voor hitzone
     const pts: Point[] = [
-      { x: p.x + norm.x * halfW, y: p.y + norm.y * halfW },
-      { x: q.x + norm.x * halfW, y: q.y + norm.y * halfW },
-      { x: q.x - norm.x * halfW, y: q.y - norm.y * halfW },
-      { x: p.x - norm.x * halfW, y: p.y - norm.y * halfW },
+      { x: p.x + norm.x * hw, y: p.y + norm.y * hw },
+      { x: q.x + norm.x * hw, y: q.y + norm.y * hw },
+      { x: q.x - norm.x * hw, y: q.y - norm.y * hw },
+      { x: p.x - norm.x * hw, y: p.y - norm.y * hw },
     ];
     return (
       <polygon
@@ -207,7 +275,6 @@ export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
     );
   }
 
-  // ── Tap-zone voor hoekpunt ──
   function renderHoekTapZone(i: number) {
     const p = outline[i];
     const r = Math.max(20, 30 / vp.scale);
@@ -226,6 +293,9 @@ export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
   }
 
   const transform = `translate(${vp.x} ${vp.y}) scale(${vp.scale})`;
+  const m2 = oppervlakteM2(blad);
+  const cx = (bb.minX + bb.maxX) / 2;
+  const cy = (bb.minY + bb.maxY) / 2;
 
   return (
     <svg
@@ -239,6 +309,9 @@ export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
       onWheel={onWheel}
     >
       <g transform={transform}>
+        {/* Geselecteerd segment highlight */}
+        {selectedSegmentIndex !== null && renderSegmentHighlight(selectedSegmentIndex)}
+
         {/* Blad-polygoon */}
         <polygon
           points={pointsAttr(outline)}
@@ -247,14 +320,31 @@ export default function Canvas({ blad, onSegmentTap, onHoekTap }: Props) {
           strokeWidth={strokeW * 2}
         />
 
-        {/* Hoekpunten */}
+        {/* m² watermerk */}
+        <text
+          x={cx}
+          y={cy}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#94a3b8"
+          fillOpacity={0.7}
+          fontSize={fontSizeMm * 1.4}
+          fontFamily="system-ui, sans-serif"
+          style={{ pointerEvents: "none", userSelect: "none" }}
+        >
+          {m2.toFixed(2)} m²
+        </text>
+
+        {/* Hoekpunten: wit met teal stroke */}
         {outline.map((p, i) => (
           <circle
             key={`pt-${i}`}
             cx={p.x}
             cy={p.y}
-            r={fontSizeMm * 0.25}
-            fill="#94a3b8"
+            r={fontSizeMm * 0.4}
+            fill="white"
+            stroke="#0d9488"
+            strokeWidth={strokeW * 2}
           />
         ))}
 

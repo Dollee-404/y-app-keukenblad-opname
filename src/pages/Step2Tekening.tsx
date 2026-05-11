@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { Opname } from "../data/seed-types";
 import type { OpnameAction } from "../state/opnameReducer";
 import BladList from "./step2/BladList";
@@ -6,12 +6,19 @@ import NieuwBladDialog from "./step2/NieuwBladDialog";
 import Canvas from "./step2/Canvas";
 import SegmentPanel from "./step2/SegmentPanel";
 import HoekUithapDialog from "./step2/HoekUithapDialog";
+import CanvasToolbar from "./step2/CanvasToolbar";
+import CanvasStatusBar from "./step2/CanvasStatusBar";
+import BladInfoPanel from "./step2/BladInfoPanel";
 import {
   rechthoekOutline,
   segmentLengtes,
   bewerkSegmentLengte,
+  segmentMidden,
+  uitwaartsNormaal,
 } from "../drawing/bladHelpers";
 import type { Blad } from "../data/seed-types";
+
+interface Viewport { x: number; y: number; scale: number }
 
 interface Props {
   state: Opname;
@@ -24,6 +31,9 @@ export default function Step2Tekening({ state, dispatch }: Props) {
   const [actieveSegment, setActieveSegment] = useState<number | null>(null);
   const [actieveHoek, setActieveHoek] = useState<number | null>(null);
   const [lijstOpen, setLijstOpen] = useState(false);
+  const [vp, setVp] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const fitRef = useRef<(() => void) | null>(null);
 
   const geselecteerdBlad = state.bladen.find(b => b.id === selectedId) ?? null;
 
@@ -56,13 +66,10 @@ export default function Step2Tekening({ state, dispatch }: Props) {
     if (!geselecteerdBlad || actieveSegment === null) return;
     const huidig = geselecteerdBlad.outline ?? rechthoekOutline(geselecteerdBlad.lengte, geselecteerdBlad.breedte);
     const nieuweOutline = bewerkSegmentLengte(huidig, actieveSegment, nieuweLengte);
-
-    // Update ook lengte/breedte als de bounding box verandert
     const xs = nieuweOutline.map(p => p.x);
     const ys = nieuweOutline.map(p => p.y);
     const nieuwL = Math.max(...xs) - Math.min(...xs);
     const nieuwB = Math.max(...ys) - Math.min(...ys);
-
     dispatch({
       type: "BLAD_BIJWERKEN",
       id: geselecteerdBlad.id,
@@ -73,11 +80,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
 
   function handleHoekToepassen(nieuweOutline: typeof geselecteerdBlad.outline) {
     if (!geselecteerdBlad || !nieuweOutline) return;
-    dispatch({
-      type: "BLAD_BIJWERKEN",
-      id: geselecteerdBlad.id,
-      patch: { outline: nieuweOutline },
-    });
+    dispatch({ type: "BLAD_BIJWERKEN", id: geselecteerdBlad.id, patch: { outline: nieuweOutline } });
     setActieveHoek(null);
   }
 
@@ -90,99 +93,135 @@ export default function Step2Tekening({ state, dispatch }: Props) {
       ? segmentLengtes(huidigOutline)[actieveSegment]
       : 0;
 
+  // Bereken floating positie voor SegmentPanel (in pixels binnen canvas-container)
+  const segmentPopoverPos = useCallback((): { left: number; top: number } | null => {
+    if (actieveSegment === null || !huidigOutline || !canvasContainerRef.current) return null;
+    const mid = segmentMidden(huidigOutline, actieveSegment);
+    const norm = uitwaartsNormaal(huidigOutline, actieveSegment);
+    const offsetMm = 60;
+    const anchorX = (mid.x + norm.x * offsetMm) * vp.scale + vp.x;
+    const anchorY = (mid.y + norm.y * offsetMm) * vp.scale + vp.y;
+    const container = canvasContainerRef.current;
+    const panelW = 360;
+    const panelH = 110;
+    const margin = 8;
+    const left = Math.max(margin, Math.min(anchorX - panelW / 2, container.clientWidth - panelW - margin));
+    const top = Math.max(margin, Math.min(anchorY - panelH / 2, container.clientHeight - panelH - margin));
+    return { left, top };
+  }, [actieveSegment, huidigOutline, vp]);
+
+  const popoverPos = segmentPopoverPos();
+
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-row h-full min-h-0 overflow-hidden">
 
-      {/* ── Layout: BladList sidebar + Canvas ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      {/* Kolom 1: BladList (desktop: altijd zichtbaar) */}
+      <aside
+        className="hidden md:flex flex-col bg-white flex-shrink-0 overflow-y-auto"
+        style={{ width: 240, borderRight: "0.5px solid rgba(0,0,0,0.08)" }}
+      >
+        <BladList
+          bladen={state.bladen}
+          selectedId={selectedId}
+          onSelect={(id) => { setSelectedId(id); setActieveSegment(null); setActieveHoek(null); }}
+          onVerwijder={handleVerwijder}
+          onNieuw={() => setToonNieuwDialog(true)}
+        />
+      </aside>
 
-        {/* Sidebar — desktop: altijd zichtbaar, tablet portrait: drawer */}
-        <aside className={[
-          "bg-white border-r border-slate-200 flex-shrink-0 transition-all duration-200",
-          /* Desktop: vaste breedte */
-          "hidden md:flex md:w-64 lg:w-72 flex-col",
-        ].join(" ")}>
-          <BladList
-            bladen={state.bladen}
-            selectedId={selectedId}
-            onSelect={(id) => { setSelectedId(id); setActieveSegment(null); setActieveHoek(null); }}
-            onVerwijder={handleVerwijder}
-            onNieuw={() => setToonNieuwDialog(true)}
-          />
-        </aside>
+      {/* Kolom 2: Canvas */}
+      <div className="flex-1 min-w-0 flex flex-col min-h-0">
+        <CanvasToolbar
+          blad={geselecteerdBlad}
+          state={state}
+          onHoekKnippen={() => geselecteerdBlad && setActieveHoek(0)}
+          onZoomIn={() => setVp(v => ({ ...v, scale: Math.min(20, v.scale * 1.2) }))}
+          onZoomOut={() => setVp(v => ({ ...v, scale: Math.max(0.05, v.scale / 1.2) }))}
+          onFitScreen={() => fitRef.current?.()}
+          onDrawerOpen={() => setLijstOpen(true)}
+        />
 
-        {/* Canvas area */}
-        <div className="flex-1 flex flex-col min-w-0">
-
-          {/* Toolbar boven canvas */}
-          <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3 min-h-[48px]">
-            {/* Mobiel: lijst-toggle */}
-            <button
-              onClick={() => setLijstOpen(o => !o)}
-              className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-              aria-label="Bladenlijst"
-            >
-              ☰
-            </button>
-
-            {geselecteerdBlad ? (
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-semibold text-slate-800">{geselecteerdBlad.label}</span>
-                <span className="ml-2 text-xs text-slate-400">
-                  {geselecteerdBlad.lengte} × {geselecteerdBlad.breedte} × {geselecteerdBlad.dikte} mm
-                </span>
-              </div>
-            ) : (
-              <span className="flex-1 text-sm text-slate-400">Selecteer een blad</span>
-            )}
-
-            {/* Mobiel: + Nieuw */}
-            <button
-              onClick={() => setToonNieuwDialog(true)}
-              className="md:hidden min-h-[44px] px-3 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              + Nieuw
-            </button>
-          </div>
-
-          {/* Canvas / lege staat */}
-          <div className="flex-1 relative overflow-hidden">
-            {geselecteerdBlad ? (
-              <Canvas
-                blad={geselecteerdBlad}
-                onSegmentTap={handleSegmentTap}
-                onHoekTap={handleHoekTap}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
-                <p className="text-slate-400">Geen blad geselecteerd</p>
-                <button
-                  onClick={() => setToonNieuwDialog(true)}
-                  className="min-h-[52px] px-6 bg-teal-600 text-white text-base font-semibold rounded-xl hover:bg-teal-700 transition-colors"
-                >
-                  + Nieuw blad toevoegen
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Segment-invoer panel (vast onderaan) */}
-          {actieveSegment !== null && geselecteerdBlad && (
-            <SegmentPanel
-              segmentIndex={actieveSegment}
-              huidigeLengte={huidigeLengteSegment}
-              onOpslaan={handleSegmentOpslaan}
-              onSluiten={() => setActieveSegment(null)}
+        {/* SVG-area: relatief → floating popover en dialog worden hier verankerd */}
+        <div ref={canvasContainerRef} className="flex-1 min-h-0 relative overflow-hidden" style={{ padding: 24 }}>
+          {geselecteerdBlad ? (
+            <Canvas
+              blad={geselecteerdBlad}
+              selectedSegmentIndex={actieveSegment}
+              vp={vp}
+              onVpChange={setVp}
+              onFitRef={fitRef}
+              onSegmentTap={handleSegmentTap}
+              onHoekTap={handleHoekTap}
             />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
+              <p className="text-slate-400">Geen blad geselecteerd</p>
+              <button
+                onClick={() => setToonNieuwDialog(true)}
+                className="min-h-[52px] px-6 bg-teal-600 text-white text-base font-semibold rounded-xl hover:bg-teal-700 transition-colors"
+              >
+                + Nieuw blad toevoegen
+              </button>
+            </div>
+          )}
+
+          {/* Floating SegmentPanel */}
+          {actieveSegment !== null && geselecteerdBlad && popoverPos && (
+            <div style={{ position: "absolute", left: popoverPos.left, top: popoverPos.top, zIndex: 20 }}>
+              <SegmentPanel
+                segmentIndex={actieveSegment}
+                huidigeLengte={huidigeLengteSegment}
+                onOpslaan={handleSegmentOpslaan}
+                onSluiten={() => setActieveSegment(null)}
+              />
+            </div>
+          )}
+
+          {/* HoekUithapDialog: gecentreerd binnen canvas-area */}
+          {actieveHoek !== null && geselecteerdBlad && huidigOutline && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 30,
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.3)",
+                }}
+                onClick={() => setActieveHoek(null)}
+              />
+              <div style={{ position: "relative", zIndex: 1 }}>
+                <HoekUithapDialog
+                  cornerIndex={actieveHoek}
+                  outline={huidigOutline}
+                  bladLengte={geselecteerdBlad.lengte}
+                  bladBreedte={geselecteerdBlad.breedte}
+                  onToepassen={handleHoekToepassen}
+                  onSluiten={() => setActieveHoek(null)}
+                />
+              </div>
+            </div>
           )}
         </div>
+
+        <CanvasStatusBar />
       </div>
+
+      {/* Kolom 3: BladInfoPanel */}
+      <BladInfoPanel blad={geselecteerdBlad} state={state} />
 
       {/* Mobiel drawer voor bladenlijst */}
       {lijstOpen && (
         <div className="md:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={() => setLijstOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-xl flex flex-col">
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-xl flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
               <span className="font-semibold text-slate-800">Bladen</span>
               <button
@@ -210,17 +249,6 @@ export default function Step2Tekening({ state, dispatch }: Props) {
         <NieuwBladDialog
           onToevoegen={handleToevoegen}
           onAnnuleer={() => setToonNieuwDialog(false)}
-        />
-      )}
-
-      {actieveHoek !== null && geselecteerdBlad && huidigOutline && (
-        <HoekUithapDialog
-          cornerIndex={actieveHoek}
-          outline={huidigOutline}
-          bladLengte={geselecteerdBlad.lengte}
-          bladBreedte={geselecteerdBlad.breedte}
-          onToepassen={handleHoekToepassen}
-          onSluiten={() => setActieveHoek(null)}
         />
       )}
     </div>

@@ -49,8 +49,7 @@ export default function HoekUithapDialog({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white rounded-xl w-full max-w-sm shadow-xl">
+    <div className="bg-white rounded-xl w-full max-w-sm shadow-xl">
         <div className="p-5 border-b border-slate-100">
           <h2 className="font-semibold text-slate-800">Hoek wegknippen</h2>
           <p className="text-sm text-slate-500 mt-1">Hoekpunt {cornerIndex + 1}</p>
@@ -120,7 +119,6 @@ export default function HoekUithapDialog({
             Toepassen
           </button>
         </div>
-      </div>
     </div>
   );
 }

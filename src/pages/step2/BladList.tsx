@@ -1,4 +1,5 @@
 import type { Blad } from "../../data/seed-types";
+import { oppervlakteM2 } from "../../data/seed-types";
 import { rechthoekOutline } from "../../drawing/bladHelpers";
 
 interface Props {
@@ -29,16 +30,33 @@ function BladThumbnail({ blad }: { blad: Blad }) {
 }
 
 export default function BladList({ bladen, selectedId, onSelect, onVerwijder, onNieuw }: Props) {
+  const totaalM2 = bladen.reduce((s, b) => s + oppervlakteM2(b), 0);
+
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3">
+      <div style={{ padding: "12px 12px 8px" }}>
         <button
           onClick={onNieuw}
-          className="w-full min-h-[44px] bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors"
+          className="w-full bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition-colors flex items-center justify-center gap-1"
+          style={{ padding: "10px", fontSize: 13, borderRadius: 6 }}
         >
-          + Nieuw blad
+          <span>+</span> Nieuw blad
         </button>
       </div>
+
+      {bladen.length > 0 && (
+        <div
+          style={{
+            padding: "4px 8px",
+            fontSize: 10,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            color: "#94a3b8",
+          }}
+        >
+          {bladen.length} {bladen.length === 1 ? "blad" : "bladen"} — {totaalM2.toFixed(2)} m²
+        </div>
+      )}
 
       {bladen.length === 0 ? (
         <div className="flex-1 flex items-center justify-center px-4 text-center">

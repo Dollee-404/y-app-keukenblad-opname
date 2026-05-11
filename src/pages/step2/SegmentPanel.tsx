@@ -7,6 +7,8 @@ interface Props {
   onSluiten: () => void;
 }
 
+const ZIJDE_LABELS = ["Bovenzijde", "Rechterzijde", "Onderzijde", "Linkerzijde"];
+
 export default function SegmentPanel({ segmentIndex, huidigeLengte, onOpslaan, onSluiten }: Props) {
   const [waarde, setWaarde] = useState(Math.round(huidigeLengte).toString());
 
@@ -23,69 +25,111 @@ export default function SegmentPanel({ segmentIndex, huidigeLengte, onOpslaan, o
     if (n > 0) onOpslaan(n);
   }
 
-  const label = `Zijde ${segmentIndex + 1}`;
+  const label = ZIJDE_LABELS[segmentIndex] ?? `Zijde ${segmentIndex + 1}`;
+
+  const btnBase: React.CSSProperties = {
+    padding: "6px 8px",
+    fontSize: 11,
+    background: "#f1f5f9",
+    borderRadius: 4,
+    border: "none",
+    cursor: "pointer",
+    minWidth: 36,
+  };
 
   return (
-    <div className="bg-white border-t border-slate-200 p-4 shadow-lg">
-      <div className="max-w-md mx-auto">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-slate-700">{label} — maat aanpassen</h3>
-          <button
-            onClick={onSluiten}
-            className="text-slate-400 hover:text-slate-600 text-xl px-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label="Sluiten"
-          >
-            ×
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => aanpassen(-100)}
-            className="min-h-[44px] min-w-[44px] border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors px-3"
-          >
-            −100
-          </button>
-          <button
-            onClick={() => aanpassen(-10)}
-            className="min-h-[44px] min-w-[44px] border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors px-3"
-          >
-            −10
-          </button>
-          <input
-            type="number"
-            inputMode="numeric"
-            className="flex-1 min-h-[44px] border border-slate-300 rounded-lg text-center text-base font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
-            value={waarde}
-            onChange={(e) => setWaarde(e.target.value)}
-          />
-          <span className="text-sm text-slate-500">mm</span>
-          <button
-            onClick={() => aanpassen(10)}
-            className="min-h-[44px] min-w-[44px] border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors px-3"
-          >
-            +10
-          </button>
-          <button
-            onClick={() => aanpassen(100)}
-            className="min-h-[44px] min-w-[44px] border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors px-3"
-          >
-            +100
-          </button>
-        </div>
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={onSluiten}
-            className="flex-1 min-h-[44px] border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
-          >
-            Annuleren
-          </button>
-          <button
-            onClick={handleOpslaan}
-            className="flex-1 min-h-[44px] bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors"
-          >
-            Toepassen
-          </button>
-        </div>
+    <div
+      style={{
+        background: "white",
+        border: "0.5px solid rgba(0,0,0,0.12)",
+        borderRadius: 8,
+        padding: "12px 14px",
+        minWidth: 340,
+        boxShadow: "0 0 0 1px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.1)",
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: "#475569" }}>
+          {label} · maat
+        </span>
+        <button
+          onClick={onSluiten}
+          aria-label="Sluiten"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: 16,
+            color: "#94a3b8",
+            padding: "0 4px",
+            lineHeight: 1,
+          }}
+        >
+          ×
+        </button>
+      </div>
+
+      {/* Input-rij */}
+      <div className="flex items-center" style={{ gap: 6 }}>
+        <button style={btnBase} onClick={() => aanpassen(-100)}>−100</button>
+        <button style={btnBase} onClick={() => aanpassen(-10)}>−10</button>
+        <input
+          type="number"
+          inputMode="numeric"
+          style={{
+            flex: 1,
+            padding: "6px 8px",
+            fontSize: 14,
+            fontWeight: 500,
+            textAlign: "center",
+            border: "0.5px solid #cbd5e1",
+            borderRadius: 4,
+            outline: "none",
+            minWidth: 0,
+          }}
+          value={waarde}
+          onChange={(e) => setWaarde(e.target.value)}
+          onFocus={(e) => e.target.select()}
+        />
+        <span style={{ fontSize: 12, color: "#64748b" }}>mm</span>
+        <button style={btnBase} onClick={() => aanpassen(10)}>+10</button>
+        <button style={btnBase} onClick={() => aanpassen(100)}>+100</button>
+      </div>
+
+      {/* Actie-rij */}
+      <div className="flex" style={{ gap: 6, marginTop: 8 }}>
+        <button
+          onClick={onSluiten}
+          style={{
+            flex: 1,
+            padding: "6px 0",
+            fontSize: 11,
+            background: "white",
+            border: "0.5px solid #cbd5e1",
+            borderRadius: 4,
+            cursor: "pointer",
+            color: "#475569",
+          }}
+        >
+          Annuleer
+        </button>
+        <button
+          onClick={handleOpslaan}
+          style={{
+            flex: 2,
+            padding: "6px 0",
+            fontSize: 11,
+            fontWeight: 500,
+            background: "#0d9488",
+            color: "white",
+            border: "none",
+            borderRadius: 4,
+            cursor: "pointer",
+          }}
+        >
+          Toepassen
+        </button>
       </div>
     </div>
   );
