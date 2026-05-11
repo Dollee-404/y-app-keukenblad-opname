@@ -1,6 +1,6 @@
 import seedRaw from "../data/seed-data.json";
 import { legeOpname } from "../data/seed-types";
-import type { SeedData, Opname, Adres } from "../data/seed-types";
+import type { SeedData, Opname, Adres, Blad } from "../data/seed-types";
 
 const seed = seedRaw as unknown as SeedData;
 
@@ -15,7 +15,10 @@ export type OpnameAction =
   | { type: "SET_AFLEVER_GELIJK_AAN_OPDRACHTGEVER"; payload: boolean }
   | { type: "SET_ETAGE"; payload: string }
   | { type: "SET_KLANT_REGELT_LIFT"; payload: boolean }
-  | { type: "SET_UW_REFERENTIE"; payload: string };
+  | { type: "SET_UW_REFERENTIE"; payload: string }
+  | { type: "BLAD_TOEVOEGEN"; blad: Blad }
+  | { type: "BLAD_VERWIJDEREN"; id: string }
+  | { type: "BLAD_BIJWERKEN"; id: string; patch: Partial<Blad> };
 
 export function opnameReducer(state: Opname, action: OpnameAction): Opname {
   switch (action.type) {
@@ -93,5 +96,19 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
 
     case "SET_UW_REFERENTIE":
       return { ...state, uwReferentie: action.payload };
+
+    case "BLAD_TOEVOEGEN":
+      return { ...state, bladen: [...state.bladen, action.blad] };
+
+    case "BLAD_VERWIJDEREN":
+      return { ...state, bladen: state.bladen.filter((b) => b.id !== action.id) };
+
+    case "BLAD_BIJWERKEN":
+      return {
+        ...state,
+        bladen: state.bladen.map((b) =>
+          b.id === action.id ? { ...b, ...action.patch } : b
+        ),
+      };
   }
 }
