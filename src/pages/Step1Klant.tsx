@@ -3,7 +3,7 @@ import seedRaw from "../data/seed-data.json";
 import type { SeedData } from "../data/seed-types";
 import type { OpnameAction } from "../state/opnameReducer";
 import type { Opname } from "../data/seed-types";
-import { searchCustomers, createCustomer } from "../erpnext/customerSearch";
+import { searchCustomers, createCustomerWithAddress } from "../erpnext/customerSearch";
 import type { CustomerSummary } from "../erpnext/customerSearch";
 import { IN_YAPP_CONTEXT, callMethod } from "../bridge";
 
@@ -97,7 +97,13 @@ export default function Step1Klant({ state, dispatch }: Props) {
     setAanmaakFout(null);
     setAanmaakOk(null);
     try {
-      const result = await createCustomer(naam);
+      const result = await createCustomerWithAddress({
+        naam,
+        straat: state.opdrachtgever.straat,
+        postcodePlaats: state.opdrachtgever.postcodePlaats,
+        email: state.opdrachtgever.email,
+        telefoon: state.opdrachtgever.telefoon,
+      });
       setAanmaakOk(`Klant aangemaakt: ${result.name}`);
     } catch (e) {
       setAanmaakFout(e instanceof Error ? e.message : "Aanmaken mislukt");
