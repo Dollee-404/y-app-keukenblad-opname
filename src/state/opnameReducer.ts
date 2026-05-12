@@ -22,7 +22,7 @@ export type OpnameAction =
   | { type: "SEGMENT_SELECTEREN"; bladId: string; segmentIndex: number }
   | { type: "SEGMENT_DESELECTEREN" }
   | { type: "SPARING_TOEVOEGEN"; bladId: string; sparing: Sparing }
-  | { type: "SPARING_VERWIJDEREN"; bladId: string; id: string }
+  | { type: "SPARING_VERWIJDEREN"; bladId: string; id: string; verwijderGekoppeld?: boolean }
   | { type: "SPARING_BIJWERKEN"; bladId: string; id: string; patch: Partial<Sparing> }
   | { type: "BOORGAT_TOEVOEGEN"; bladId: string; boorgat: Boorgat }
   | { type: "BOORGAT_VERWIJDEREN"; bladId: string; id: string }
@@ -139,8 +139,17 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
         bladen: state.bladen.map(b => {
           if (b.id !== action.bladId) return b;
           const sparingen = (b.sparingen ?? []).filter(s => s.id !== action.id);
-          // Silent fix: verwijder referenties naar de verwijderde sparing
-          const boorgatenmSchoon = (b.boorgaten ?? []).map(bg =>
+          let boorgaten = b.boorgaten ?? [];
+          if (action.verwijderGekoppeld) {
+            boorgaten = boorgaten.filter(bg => bg.gekoppeldAan?.sparingId !== action.id);
+          } else {
+            boorgaten = boorgaten.map(bg =>
+              bg.gekoppeldAan?.sparingId === action.id
+                ? { ...bg, gekoppeldAan: undefined }
+                : bg
+            );
+          }
+          const boorgatSchoon = boorgaten.map(bg =>
             bg.referentie?.type === "VORIGE_SPARING" && bg.referentie.sparingId === action.id
               ? { ...bg, referentie: undefined }
               : bg
@@ -150,24 +159,33 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
               ? { ...s, referentie: undefined }
               : s
           );
-          return { ...b, sparingen: sparingenSchoon, boorgaten: boorgatenmSchoon };
+          return { ...b, sparingen: sparingenSchoon, boorgaten: boorgatSchoon };
         }),
       };
 
-    case "SPARING_BIJWERKEN":
+    case "SPARING_BIJWERKEN": {
       return {
         ...state,
-        bladen: state.bladen.map(b =>
-          b.id === action.bladId
-            ? {
-                ...b,
-                sparingen: (b.sparingen ?? []).map(s =>
-                  s.id === action.id ? { ...s, ...action.patch } : s
-                ),
-              }
-            : b
-        ),
+        bladen: state.bladen.map(b => {
+          if (b.id !== action.bladId) return b;
+          const newSparings = (b.sparingen ?? []).map(s =>
+            s.id === action.id ? { ...s, ...action.patch } : s
+          );
+          if (action.patch.positie) {
+            const updated = newSparings.find(s => s.id === action.id);
+            if (updated) {
+              const newBoorgaten = (b.boorgaten ?? []).map(bg =>
+                bg.gekoppeldAan?.sparingId === action.id
+                  ? { ...bg, positie: { x: updated.positie.x + bg.gekoppeldAan.offsetX, y: updated.positie.y + bg.gekoppeldAan.offsetY } }
+                  : bg
+              );
+              return { ...b, sparingen: newSparings, boorgaten: newBoorgaten };
+            }
+          }
+          return { ...b, sparingen: newSparings };
+        }),
       };
+    }
 
     case "BOORGAT_TOEVOEGEN":
       return {

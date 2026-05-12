@@ -174,6 +174,12 @@ export type Boorgat = {
   groepId?: string;
   groepVolgnummer?: number;
   notitie?: string;
+  gekoppeldAan?: {
+    type: 'SPOELBAK' | 'KOOKPLAAT';
+    sparingId: string;
+    offsetX: number;
+    offsetY: number;
+  };
 };
 
 export type InbouwwijzeDef = {
