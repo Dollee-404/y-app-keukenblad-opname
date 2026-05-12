@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from "react";
-import type { Blad, Point, Sparing } from "../../data/seed-types";
+import type { Blad, Point, Sparing, Boorgat } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import {
   rechthoekOutline,
@@ -16,6 +16,7 @@ interface Props {
   blad: Blad;
   selectedSegmentIndex: number | null;
   activeSparingId?: string | null;
+  activeBoorgatId?: string | null;
   materiaalSoort?: string;
   vp: Viewport;
   onVpChange: (vp: Viewport | ((prev: Viewport) => Viewport)) => void;
@@ -23,6 +24,7 @@ interface Props {
   onSegmentTap: (segmentIndex: number) => void;
   onHoekTap: (cornerIndex: number) => void;
   onSparingTap?: (id: string) => void;
+  onBoorgatTap?: (id: string) => void;
 }
 
 const DIM_OFFSET = 50;
@@ -46,6 +48,7 @@ export default function Canvas({
   blad,
   selectedSegmentIndex,
   activeSparingId,
+  activeBoorgatId,
   materiaalSoort,
   vp,
   onVpChange,
@@ -53,6 +56,7 @@ export default function Canvas({
   onSegmentTap,
   onHoekTap,
   onSparingTap,
+  onBoorgatTap,
 }: Props) {
   const isComposiet = COMPOSIET_SOORTEN.has(materiaalSoort ?? "");
   const svgRef = useRef<SVGSVGElement>(null);
@@ -312,6 +316,87 @@ export default function Canvas({
     );
   }
 
+  function renderBoorgat(bg: Boorgat) {
+    const r = bg.diameter / 2;
+    const tapR = r + Math.max(10, 14 / vp.scale);
+    const actief = bg.id === activeBoorgatId;
+    const kleur = actief ? "#4338ca" : "#6B4FB8";
+    const dasharray = bg.doorboring ? undefined : `${fontSizeMm * 0.4} ${fontSizeMm * 0.25}`;
+    return (
+      <g
+        key={bg.id}
+        style={{ cursor: onBoorgatTap ? "pointer" : "default" }}
+        onPointerDown={(e) => { e.stopPropagation(); onBoorgatTap?.(bg.id); }}
+      >
+        <circle cx={bg.positie.x} cy={bg.positie.y} r={tapR} fill="transparent" stroke="none" />
+        {actief && (
+          <circle
+            cx={bg.positie.x} cy={bg.positie.y} r={r + strokeW * 4}
+            fill={kleur} fillOpacity={0.12} stroke="none"
+            style={{ pointerEvents: "none" }}
+          />
+        )}
+        <circle
+          cx={bg.positie.x} cy={bg.positie.y} r={r}
+          fill="none" stroke={kleur} strokeWidth={strokeW * 1.5}
+          strokeDasharray={dasharray}
+          style={{ pointerEvents: "none" }}
+        />
+        <text
+          x={bg.positie.x + r + fontSizeMm * 0.35} y={bg.positie.y}
+          textAnchor="start" dominantBaseline="middle"
+          fontSize={fontSizeMm * 0.75} fill={kleur}
+          stroke="white" strokeWidth={fontSizeMm * 0.2} paintOrder="stroke"
+          fontFamily="system-ui, sans-serif"
+          style={{ pointerEvents: "none" }}
+        >
+          Ø{bg.diameter}
+        </text>
+      </g>
+    );
+  }
+
+  function renderBoorgatGroepLijnen() {
+    const boorgaten = blad.boorgaten ?? [];
+    const groepen = new Map<string, Boorgat[]>();
+    for (const bg of boorgaten) {
+      if (!bg.groepId) continue;
+      if (!groepen.has(bg.groepId)) groepen.set(bg.groepId, []);
+      groepen.get(bg.groepId)!.push(bg);
+    }
+    const result: React.ReactNode[] = [];
+    groepen.forEach((leden, groepId) => {
+      const gesorteerd = [...leden].sort((a, b) => (a.groepVolgnummer ?? 1) - (b.groepVolgnummer ?? 1));
+      for (let i = 0; i < gesorteerd.length - 1; i++) {
+        const a = gesorteerd[i];
+        const b = gesorteerd[i + 1];
+        const mx = (a.positie.x + b.positie.x) / 2;
+        const my = (a.positie.y + b.positie.y) / 2;
+        const afstand = Math.round(Math.hypot(b.positie.x - a.positie.x, b.positie.y - a.positie.y));
+        result.push(
+          <g key={`groep-${groepId}-${i}`} style={{ pointerEvents: "none" }}>
+            <line
+              x1={a.positie.x} y1={a.positie.y} x2={b.positie.x} y2={b.positie.y}
+              stroke="#6B4FB8" strokeWidth={strokeW}
+              strokeDasharray={`${fontSizeMm * 0.3} ${fontSizeMm * 0.2}`}
+              strokeOpacity={0.5}
+            />
+            <text
+              x={mx} y={my - fontSizeMm * 0.5}
+              textAnchor="middle" dominantBaseline="middle"
+              fontSize={fontSizeMm * 0.7} fill="#6B4FB8"
+              stroke="white" strokeWidth={fontSizeMm * 0.18} paintOrder="stroke"
+              fontFamily="system-ui, sans-serif"
+            >
+              {afstand}
+            </text>
+          </g>
+        );
+      }
+    });
+    return result;
+  }
+
   const transform = `translate(${vp.x} ${vp.y}) scale(${vp.scale})`;
   const m2 = oppervlakteM2(blad);
   const cx = (bb.minX + bb.maxX) / 2;
@@ -388,8 +473,14 @@ export default function Canvas({
           );
         })}
 
-        {/* m² watermerk — verborgen zodra er sparingen zijn */}
-        {!blad.sparingen?.length && (
+        {/* Groepverbindingslijnen */}
+        {renderBoorgatGroepLijnen()}
+
+        {/* Boorgaten */}
+        {(blad.boorgaten ?? []).map(bg => renderBoorgat(bg))}
+
+        {/* m² watermerk — verborgen zodra er sparingen of boorgaten zijn */}
+        {!blad.sparingen?.length && !blad.boorgaten?.length && (
           <text
             x={cx}
             y={cy}
