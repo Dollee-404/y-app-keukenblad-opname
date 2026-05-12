@@ -220,14 +220,23 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
           {stap === 2 && (
             <div>
               {toonWarning && gekozenProduct ? (
-                <div style={{ background: "#fef9c3", border: "0.5px solid #d97706", borderRadius: 8, padding: 14, marginBottom: 14 }}>
-                  <p style={{ fontSize: 12, color: "#92400e", marginBottom: 10 }}>
-                    {seed.clausules.VLAKBOUW_WAARSCHUWING}
-                  </p>
+                <div style={{
+                  background: "#fffbeb",
+                  borderLeft: "3px solid #b45309",
+                  borderRadius: "0 6px 6px 0",
+                  padding: 12,
+                  marginBottom: 14,
+                }}>
+                  <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1.4, flexShrink: 0 }}>⚠</span>
+                    <p style={{ fontSize: 12, color: "#78350f", margin: 0, lineHeight: 1.5 }}>
+                      {seed.clausules.VLAKBOUW_WAARSCHUWING}
+                    </p>
+                  </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       onClick={() => { setGekozenProduct(null); setToonWarning(false); }}
-                      style={{ flex: 1, padding: "6px 0", fontSize: 11, border: "0.5px solid #d97706", borderRadius: 4, background: "white", cursor: "pointer", color: "#92400e" }}
+                      style={{ flex: 1, padding: "6px 0", fontSize: 11, border: "1px solid #d97706", borderRadius: 4, background: "white", cursor: "pointer", color: "#92400e" }}
                     >
                       Kies ander product
                     </button>
