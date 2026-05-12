@@ -7,6 +7,7 @@ interface Props {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitScreen: () => void;
+  onSparingToevoegen: () => void;
   onDrawerOpen?: () => void;
 }
 
@@ -21,6 +22,7 @@ export default function CanvasToolbar({
   onZoomIn,
   onZoomOut,
   onFitScreen,
+  onSparingToevoegen,
   onDrawerOpen,
 }: Props) {
   const matSoort = blad?.materiaalOverride?.soort ?? state.materiaal?.soort ?? "";
@@ -98,6 +100,26 @@ export default function CanvasToolbar({
       <div className="flex items-center" style={{ gap: 6 }}>
         {iconBtn("Hoek wegknippen", onHoekKnippen, !blad)}
         {iconBtn("Overhang", () => {}, true)}
+        <div style={{ width: "0.5px", height: 16, background: "#cbd5e1", margin: "0 2px" }} />
+        <button
+          onClick={onSparingToevoegen}
+          disabled={!blad}
+          title="Sparing toevoegen"
+          style={{
+            padding: "4px 10px",
+            border: "0.5px solid #0d9488",
+            borderRadius: 4,
+            background: blad ? "#f0fdfa" : "white",
+            color: blad ? "#0d9488" : "#94a3b8",
+            cursor: blad ? "pointer" : "not-allowed",
+            fontSize: 12,
+            fontWeight: 500,
+            lineHeight: 1.4,
+            opacity: blad ? 1 : 0.4,
+          }}
+        >
+          + Sparing
+        </button>
         <div style={{ width: "0.5px", height: 16, background: "#cbd5e1", margin: "0 2px" }} />
         {iconBtn("Zoom in", onZoomIn, !blad)}
         {iconBtn("Zoom uit", onZoomOut, !blad)}

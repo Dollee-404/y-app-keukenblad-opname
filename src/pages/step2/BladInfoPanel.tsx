@@ -2,6 +2,15 @@ import type { Blad, Opname } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import { rechthoekOutline, segmentLengtes } from "../../drawing/bladHelpers";
 
+const SPARING_LABELS: Record<string, string> = {
+  KOOKPLAAT: "Kookplaat",
+  SPOELBAK: "Spoelbak",
+  KOOF: "Vrije rechthoek",
+  BOORGAT: "Boorgat",
+  KOLOM: "Kolom",
+  HOEK: "Hoek",
+};
+
 interface Props {
   blad: Blad | null;
   state: Opname;
@@ -79,10 +88,25 @@ export default function BladInfoPanel({ blad, state }: Props) {
 
       {/* Footer: Sparingen */}
       <div style={{ padding: "10px 14px", borderTop: "0.5px solid rgba(0,0,0,0.08)" }}>
-        <div style={{ ...labelStyle, marginBottom: 4 }}>Sparingen</div>
-        <p style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>
-          Beschikbaar in sprint 4
-        </p>
+        <div style={{ ...labelStyle, marginBottom: 6 }}>Sparingen</div>
+        {!blad || !blad.sparingen?.length ? (
+          <p style={{ fontSize: 11, color: "#94a3b8" }}>Geen sparingen</p>
+        ) : (
+          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
+            {blad.sparingen.map(s => (
+              <li key={s.id} style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 500, color: "#0f172a" }}>
+                  {SPARING_LABELS[s.type] ?? s.type}
+                </span>
+                {(s.productMerk || s.productModel) && (
+                  <span style={{ fontSize: 10, color: "#64748b" }}>
+                    {[s.productMerk, s.productModel].filter(Boolean).join(" ")}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
