@@ -352,6 +352,17 @@ export default function Canvas({
         >
           Ø{bg.diameter}
         </text>
+        {bg.notitie && (
+          <text
+            x={bg.positie.x + r + fontSizeMm * 0.35}
+            y={bg.positie.y + fontSizeMm * 0.9}
+            fontSize={fontSizeMm * 0.8} textAnchor="start" dominantBaseline="middle"
+            style={{ pointerEvents: "none", userSelect: "none" }}
+          >
+            <title>{bg.notitie}</title>
+            ✏
+          </text>
+        )}
       </g>
     );
   }
@@ -442,6 +453,20 @@ export default function Canvas({
                 stroke={kleur.stroke}
                 strokeWidth={strokeW * 1.5}
               />
+              {sparing.notitie && (
+                <title>{sparing.notitie}</title>
+              )}
+              {sparing.notitie && (
+                <text
+                  x={sparing.positie.x + sparing.breedte / 2 + fontSizeMm * 0.1}
+                  y={sparing.positie.y + sparing.hoogte / 2 - fontSizeMm * 0.1}
+                  fontSize={fontSizeMm * 0.85}
+                  textAnchor="start" dominantBaseline="auto"
+                  style={{ pointerEvents: "none", userSelect: "none" }}
+                >
+                  ✏
+                </text>
+              )}
               {sparing.vlakbouw && (
                 <path
                   d={sparingPath(sparing, "onder")}

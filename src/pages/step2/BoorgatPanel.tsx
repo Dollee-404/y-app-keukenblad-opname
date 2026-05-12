@@ -33,6 +33,7 @@ export default function BoorgatPanel({
   const [x, setX] = useState(String(Math.round(boorgat.positie.x)));
   const [y, setY] = useState(String(Math.round(boorgat.positie.y)));
   const [diameter, setDiameter] = useState(String(boorgat.diameter));
+  const [notitie, setNotitie] = useState(boorgat.notitie ?? "");
   const [toonGroepActie, setToonGroepActie] = useState(false);
   const [richting, setRichting] = useState<Richting>("rechts");
   const [hartAfstand, setHartAfstand] = useState("70");
@@ -41,7 +42,8 @@ export default function BoorgatPanel({
     setX(String(Math.round(boorgat.positie.x)));
     setY(String(Math.round(boorgat.positie.y)));
     setDiameter(String(boorgat.diameter));
-  }, [boorgat.id, boorgat.positie.x, boorgat.positie.y, boorgat.diameter]);
+    setNotitie(boorgat.notitie ?? "");
+  }, [boorgat.id, boorgat.positie.x, boorgat.positie.y, boorgat.diameter, boorgat.notitie]);
 
   function handlePosOpslaan() {
     const nx = parseInt(x, 10);
@@ -243,6 +245,22 @@ export default function BoorgatPanel({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Notitie */}
+      <div style={{ marginBottom: 10 }}>
+        <textarea
+          value={notitie}
+          onChange={e => setNotitie(e.target.value.slice(0, 200))}
+          onBlur={() => onBijwerken({ notitie: notitie || undefined })}
+          rows={2}
+          placeholder="Notitie (optioneel)"
+          style={{
+            width: "100%", padding: "6px 8px", border: "1px solid #e2e8f0",
+            borderRadius: 6, fontSize: 12, resize: "none", outline: "none",
+            fontFamily: "inherit", boxSizing: "border-box",
+          }}
+        />
       </div>
 
       {/* Verwijder */}

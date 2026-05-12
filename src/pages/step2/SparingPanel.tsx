@@ -20,11 +20,13 @@ const TYPE_LABELS: Record<string, string> = {
 export default function SparingPanel({ sparing, onBijwerken, onVerwijderen, onSluiten }: Props) {
   const [x, setX] = useState(String(Math.round(sparing.positie.x)));
   const [y, setY] = useState(String(Math.round(sparing.positie.y)));
+  const [notitie, setNotitie] = useState(sparing.notitie ?? "");
 
   useEffect(() => {
     setX(String(Math.round(sparing.positie.x)));
     setY(String(Math.round(sparing.positie.y)));
-  }, [sparing.id, sparing.positie.x, sparing.positie.y]);
+    setNotitie(sparing.notitie ?? "");
+  }, [sparing.id, sparing.positie.x, sparing.positie.y, sparing.notitie]);
 
   function handlePosOpslaan() {
     const nx = parseInt(x, 10);
@@ -117,6 +119,22 @@ export default function SparingPanel({ sparing, onBijwerken, onVerwijderen, onSl
             {sparing.breedte} × {sparing.hoogte} mm
           </div>
         </div>
+      </div>
+
+      {/* Notitie */}
+      <div style={{ marginBottom: 10 }}>
+        <textarea
+          value={notitie}
+          onChange={e => setNotitie(e.target.value.slice(0, 200))}
+          onBlur={() => onBijwerken({ notitie: notitie || undefined })}
+          rows={2}
+          placeholder="Notitie (optioneel)"
+          style={{
+            width: "100%", padding: "6px 8px", border: "1px solid #e2e8f0",
+            borderRadius: 6, fontSize: 12, resize: "none", outline: "none",
+            fontFamily: "inherit", boxSizing: "border-box",
+          }}
+        />
       </div>
 
       {/* Verwijder-knop */}
