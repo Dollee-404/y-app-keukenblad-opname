@@ -176,8 +176,10 @@ export type SpoelbakProduct = {
   merk: string;
   model: string;
   inbouwwijze: InbouwwijzeCode;
-  sparing_mm?: [number | null, number | null];
-  uitwendige_maat_mm?: [number, number];
+  sparing_boven_mm: [number, number];
+  sparing_onder_mm: [number, number];
+  radius_mm: number;
+  trede_mm: number;
   opmerking?: string;
 };
 
