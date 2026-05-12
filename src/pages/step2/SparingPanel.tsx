@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import type { Sparing, Blad, MaatReferentie } from "../../data/seed-types";
 import { absolutePositie, absoluteNaarReferentie } from "../../drawing/boorgatHelpers";
+import AnchorPicker from "../../components/AnchorPicker";
 
 interface Props {
   sparing: Sparing;
   blad: Blad;
   onBijwerken: (patch: Partial<Sparing>) => void;
   onVerwijderen: () => void;
-  onKraangatToevoegen?: () => void;
   onSluiten: () => void;
 }
 
@@ -35,7 +35,6 @@ export default function SparingPanel({
   blad,
   onBijwerken,
   onVerwijderen,
-  onKraangatToevoegen,
   onSluiten,
 }: Props) {
   const [x, setX] = useState(String(Math.round(sparing.positie.x)));
@@ -75,30 +74,7 @@ export default function SparingPanel({
       : sparing.positie;
     setX(String(Math.round(offset.x)));
     setY(String(Math.round(offset.y)));
-  }
-
-  function referentieNaarWaarde(ref: MaatReferentie | null): string {
-    if (!ref) return "LINKSONDER";
-    switch (ref.type) {
-      case "LINKSONDER": return "LINKSONDER";
-      case "LINKERRAND": return `LINKERRAND_${ref.offsetVanaf}`;
-      case "RECHTERRAND": return `RECHTERRAND_${ref.offsetVanaf}`;
-      case "MIDDEN_BLAD": return "MIDDEN_BLAD";
-      case "VORIGE_SPARING": return `VORIGE_SPARING_${ref.sparingId}`;
-      case "VORIG_BOORGAT": return `VORIG_BOORGAT_${ref.boorgatId}`;
-    }
-  }
-
-  function waardeNaarReferentie(val: string): MaatReferentie | null {
-    if (val === "LINKSONDER") return null;
-    if (val === "LINKERRAND_onder") return { type: "LINKERRAND", offsetVanaf: "onder" };
-    if (val === "LINKERRAND_boven") return { type: "LINKERRAND", offsetVanaf: "boven" };
-    if (val === "RECHTERRAND_onder") return { type: "RECHTERRAND", offsetVanaf: "onder" };
-    if (val === "RECHTERRAND_boven") return { type: "RECHTERRAND", offsetVanaf: "boven" };
-    if (val === "MIDDEN_BLAD") return { type: "MIDDEN_BLAD" };
-    if (val.startsWith("VORIGE_SPARING_")) return { type: "VORIGE_SPARING", sparingId: val.slice("VORIGE_SPARING_".length) };
-    if (val.startsWith("VORIG_BOORGAT_")) return { type: "VORIG_BOORGAT", boorgatId: val.slice("VORIG_BOORGAT_".length) };
-    return null;
+    onBijwerken({ referentie: nieuw ?? undefined });
   }
 
   function xLabel(): string {
@@ -158,33 +134,17 @@ export default function SparingPanel({
         </button>
       </div>
 
-      {/* Maat-referentie */}
-      <div style={{ marginBottom: 8 }}>
-        <label style={{ display: "block", fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>
+      {/* Maat-referentie — AnchorPicker */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ display: "block", fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>
           Gemeten vanaf
         </label>
-        <select
-          value={referentieNaarWaarde(referentie)}
-          onChange={e => handleReferentieWijzigen(waardeNaarReferentie(e.target.value))}
-          style={{ ...inputStyle, background: "white", cursor: "pointer" }}
-        >
-          <option value="LINKSONDER">Linksonder blad</option>
-          <option value="LINKERRAND_onder">Linkerrand (vanaf onder)</option>
-          <option value="LINKERRAND_boven">Linkerrand (vanaf boven)</option>
-          <option value="RECHTERRAND_onder">Rechterrand (vanaf onder)</option>
-          <option value="RECHTERRAND_boven">Rechterrand (vanaf boven)</option>
-          <option value="MIDDEN_BLAD">Midden blad</option>
-          {andereSparingen.map(s => (
-            <option key={s.id} value={`VORIGE_SPARING_${s.id}`}>
-              Vorige sparing: {s.productModel ?? s.type}
-            </option>
-          ))}
-          {(blad.boorgaten ?? []).map(bg => (
-            <option key={bg.id} value={`VORIG_BOORGAT_${bg.id}`}>
-              Vorig boorgat: Ø{bg.diameter}
-            </option>
-          ))}
-        </select>
+        <AnchorPicker
+          referentie={referentie}
+          onChange={handleReferentieWijzigen}
+          andereSparingen={andereSparingen}
+          andereBoorgaten={blad.boorgaten ?? []}
+        />
       </div>
 
       {/* Positie-invoer */}
@@ -224,21 +184,6 @@ export default function SparingPanel({
           </div>
         </div>
       </div>
-
-      {/* Kraangat sub-actie (alleen bij spoelbak) */}
-      {sparing.type === "SPOELBAK" && onKraangatToevoegen && (
-        <button
-          onClick={onKraangatToevoegen}
-          style={{
-            width: "100%", padding: "7px", fontSize: 12, fontWeight: 500,
-            border: "0.5px solid #6B4FB8", borderRadius: 6,
-            background: "white", color: "#6B4FB8", cursor: "pointer",
-            marginBottom: 10,
-          }}
-        >
-          + Kraangat toevoegen
-        </button>
-      )}
 
       {/* Notitie */}
       <div style={{ marginBottom: 10 }}>
