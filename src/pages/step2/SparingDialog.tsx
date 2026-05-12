@@ -1,6 +1,6 @@
 import { useState } from "react";
 import seedRaw from "../../data/seed-data.json";
-import type { SeedData, Sparing, SparingTypeCode, Blad, Opname, KookplaatProduct, SpoelbakProduct } from "../../data/seed-types";
+import type { SeedData, Sparing, SparingTypeCode, Blad, Opname, KookplaatProduct, SpoelbakProduct, Boorgat } from "../../data/seed-types";
 import { pasProductToe } from "../../drawing/sparingHelpers";
 import { rechthoekOutline } from "../../drawing/bladHelpers";
 
@@ -11,12 +11,14 @@ type AnyProduct = KookplaatProduct | SpoelbakProduct;
 interface Props {
   blad: Blad;
   state: Opname;
-  onToevoegen: (sparing: Sparing) => void;
+  onToevoegen: (sparing: Sparing, boorgat?: Boorgat) => void;
   onSluiten: () => void;
 }
 
-let teller = 0;
-function nieuweId(): string { return `sp-${++teller}`; }
+let spTeller = 0;
+function nieuweSpId(): string { return `sp-${++spTeller}`; }
+let bgTeller = 0;
+function nieuwBgId(): string { return `bg-${++bgTeller}`; }
 
 const TYPE_OPTIES: { code: SparingTypeCode; label: string; icoon: string }[] = [
   { code: "KOOKPLAAT", label: "Kookplaat", icoon: "🔥" },
@@ -37,14 +39,13 @@ function isComposietMateriaal(materiaal: Opname["materiaal"]): boolean {
 }
 
 export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: Props) {
-  const [stap, setStap] = useState<1 | 2 | 3>(1);
+  const [stap, setStap] = useState<1 | 2 | 3 | 4>(1);
   const [type, setType] = useState<SparingTypeCode | null>(null);
   const [gekozenProduct, setGekozenProduct] = useState<AnyProduct | null>(null);
   const [zoekterm, setZoekterm] = useState("");
   const [toonWarning, setToonWarning] = useState(false);
   const [handmatig, setHandmatig] = useState(false);
 
-  // Stap 3 — plaatsing state
   const defaultX = Math.round(blad.lengte / 2);
   const defaultY = Math.round(blad.breedte / 2);
   const [posX, setPosX] = useState(String(defaultX));
@@ -52,6 +53,13 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
   const [handmBreedte, setHandmBreedte] = useState("500");
   const [handmHoogte, setHandmHoogte] = useState("400");
   const [handmRadius, setHandmRadius] = useState("0");
+
+  // Stap 4 — kraan state
+  const [kraanOffsetX, setKraanOffsetX] = useState(0);
+  const [kraanOffsetY, setKraanOffsetY] = useState(0);
+  const [geavanceerd, setGeavanceerd] = useState(false);
+
+  const isSpoelbak = type === "SPOELBAK";
 
   function handleTypeKiezen(t: SparingTypeCode) {
     setType(t);
@@ -81,13 +89,29 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
     setStap(3);
   }
 
-  function handleToepassen() {
+  function spoelbakHoogte(): number {
+    return gekozenProduct ? gekozenProduct.sparing_boven_mm[1] : (Number(handmHoogte) || 400);
+  }
+
+  function spoelbakBreedte(): number {
+    return gekozenProduct ? gekozenProduct.sparing_boven_mm[0] : (Number(handmBreedte) || 500);
+  }
+
+  function handleNaarStap4() {
+    const nx = Number(posX);
+    const ny = Number(posY);
+    if (!nx || !ny) return;
+    setKraanOffsetX(0);
+    setKraanOffsetY(Math.round(spoelbakHoogte() / 2 + 50));
+    setGeavanceerd(false);
+    setStap(4);
+  }
+
+  function bouwSparing(): Sparing {
     const x = Number(posX);
     const y = Number(posY);
-    if (!x || !y) return;
-
     let basis: Sparing = {
-      id: nieuweId(),
+      id: nieuweSpId(),
       type: type!,
       bladId: blad.id,
       inbouwwijze: "ONDERBOUW",
@@ -96,14 +120,45 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
       hoogte: Number(handmHoogte) || 400,
       radiusMm: Number(handmRadius) || 0,
     };
-
     if (gekozenProduct) {
       basis.productMerk = gekozenProduct.merk;
       basis.productModel = gekozenProduct.model;
       basis = pasProductToe(basis, gekozenProduct);
     }
+    return basis;
+  }
 
-    onToevoegen(basis);
+  function handleToepassen() {
+    const x = Number(posX);
+    const y = Number(posY);
+    if (!x || !y) return;
+    onToevoegen(bouwSparing());
+  }
+
+  function handleKraanKiezen(doel: "KRAAN" | "QUOOKER") {
+    const sparing = bouwSparing();
+    const boorgat: Boorgat = {
+      id: nieuwBgId(),
+      bladId: blad.id,
+      doel,
+      diameter: 35,
+      doorboring: true,
+      positie: {
+        x: sparing.positie.x + kraanOffsetX,
+        y: sparing.positie.y + kraanOffsetY,
+      },
+      gekoppeldAan: {
+        type: "SPOELBAK",
+        sparingId: sparing.id,
+        offsetX: kraanOffsetX,
+        offsetY: kraanOffsetY,
+      },
+    };
+    onToevoegen(sparing, boorgat);
+  }
+
+  function handleGeenKraan() {
+    onToevoegen(bouwSparing());
   }
 
   const producten: AnyProduct[] =
@@ -114,7 +169,6 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
     `${p.merk} ${p.model}`.toLowerCase().includes(zoekterm.toLowerCase())
   );
 
-  // Mini preview SVG
   const outline = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
   const xs = outline.map(p => p.x);
   const ys = outline.map(p => p.y);
@@ -126,6 +180,16 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
   const previewY = Number(posY) || defaultY;
 
   const inputKlasse = "w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500";
+
+  const totaalStappen = isSpoelbak ? 4 : 3;
+  const toonDots = type !== null && stap >= 2;
+
+  const stapTitels: Record<number, string> = {
+    1: "Sparing toevoegen",
+    2: "Product kiezen",
+    3: "Positie instellen",
+    4: "Kraan toevoegen?",
+  };
 
   return (
     <div
@@ -167,11 +231,25 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
             flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: 14, fontWeight: 500, color: "#0f172a" }}>
-            {stap === 1 && "Sparing toevoegen"}
-            {stap === 2 && "Product kiezen"}
-            {stap === 3 && "Positie instellen"}
-          </span>
+          <div>
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#0f172a" }}>
+              {stapTitels[stap] ?? "Sparing toevoegen"}
+            </span>
+            {toonDots && (
+              <div style={{ display: "flex", gap: 5, marginTop: 5 }}>
+                {Array.from({ length: totaalStappen }, (_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: 6, height: 6, borderRadius: "50%",
+                      background: i + 1 === stap ? "#0d9488" : "#cbd5e1",
+                      transition: "background 0.2s",
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={onSluiten}
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#94a3b8" }}
@@ -320,7 +398,6 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
                 </div>
               )}
 
-              {/* Positie inputs */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                 <div>
                   <label style={{ display: "block", fontSize: 11, color: "#64748b", marginBottom: 4 }}>X — vanaf linkerrand (mm)</label>
@@ -332,7 +409,6 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
                 </div>
               </div>
 
-              {/* Handmatige maten (alleen voor vrije rechthoek of "niet in lijst") */}
               {(handmatig || !gekozenProduct) && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
                   <div>
@@ -350,7 +426,6 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
                 </div>
               )}
 
-              {/* Mini-preview */}
               <div style={{ borderRadius: 6, border: "0.5px solid #e2e8f0", background: "#f8fafc", padding: 8, marginBottom: 14 }}>
                 <p style={{ fontSize: 10, color: "#94a3b8", marginBottom: 4 }}>Voorvertoon</p>
                 <svg
@@ -377,6 +452,155 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
               </div>
             </div>
           )}
+
+          {/* Stap 4 — Kraan toevoegen (alleen spoelbak) */}
+          {stap === 4 && (
+            <div>
+              <p style={{ fontSize: 12, color: "#475569", marginBottom: 4, lineHeight: 1.5 }}>
+                Veel spoelbakken hebben een kraan direct erachter. Wil je 'r nu eentje plaatsen?
+              </p>
+              <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 14, lineHeight: 1.4 }}>
+                De kraan komt standaard 50 mm achter de spoelbak, gecentreerd. Je kan 'm later verschuiven.
+              </p>
+
+              {/* Mini preview: blad + spoelbak + kraan */}
+              <div style={{ borderRadius: 6, border: "0.5px solid #e2e8f0", background: "#f8fafc", padding: 8, marginBottom: 14 }}>
+                <svg
+                  viewBox={`-20 -20 ${vbW + 20} ${vbH + 20}`}
+                  style={{ width: "100%", maxHeight: 100 }}
+                  aria-label="Kraan-positie preview"
+                >
+                  <polygon
+                    points={outline.map(p => `${p.x},${p.y}`).join(" ")}
+                    fill="white" stroke="#475569"
+                    strokeWidth={Math.max(blad.lengte, blad.breedte) * 0.005}
+                  />
+                  <rect
+                    x={previewX - previewBreedte / 2}
+                    y={previewY - previewHoogte / 2}
+                    width={previewBreedte} height={previewHoogte}
+                    fill="#3b82f620" stroke="#3b82f6"
+                    strokeWidth={Math.max(blad.lengte, blad.breedte) * 0.005}
+                  />
+                  <circle
+                    cx={previewX + kraanOffsetX}
+                    cy={previewY + kraanOffsetY}
+                    r={Math.max(blad.lengte, blad.breedte) * 0.012}
+                    fill="none" stroke="#6B4FB8"
+                    strokeWidth={Math.max(blad.lengte, blad.breedte) * 0.006}
+                  />
+                </svg>
+              </div>
+
+              {/* Drie keuze-knoppen */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+                <button
+                  onClick={() => handleKraanKiezen("KRAAN")}
+                  style={{
+                    padding: "12px 16px", border: "0.5px solid #e2e8f0", borderRadius: 8,
+                    background: "white", cursor: "pointer", textAlign: "left",
+                    display: "flex", alignItems: "center", gap: 12,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#f0fdfa")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "white")}
+                >
+                  <span style={{ fontSize: 22 }}>🚰</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "#0f172a" }}>Standaard kraan</div>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>Ø35 doorboring</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleKraanKiezen("QUOOKER")}
+                  style={{
+                    padding: "12px 16px", border: "0.5px solid #e2e8f0", borderRadius: 8,
+                    background: "white", cursor: "pointer", textAlign: "left",
+                    display: "flex", alignItems: "center", gap: 12,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#f0fdfa")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "white")}
+                >
+                  <span style={{ fontSize: 22 }}>💧</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "#0f172a" }}>Quooker</div>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>Ø35 doorboring</div>
+                  </div>
+                </button>
+                <button
+                  onClick={handleGeenKraan}
+                  style={{
+                    padding: "10px 16px", border: "0.5px solid #e2e8f0", borderRadius: 8,
+                    background: "white", cursor: "pointer", textAlign: "left",
+                    display: "flex", alignItems: "center", gap: 12,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "white")}
+                >
+                  <span style={{ fontSize: 18, color: "#94a3b8" }}>✕</span>
+                  <div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>Geen kraan — skip</div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Geavanceerd: kraan-positie aanpassen */}
+              <button
+                onClick={() => setGeavanceerd(v => !v)}
+                style={{ fontSize: 11, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", marginBottom: 8 }}
+              >
+                {geavanceerd ? "▲ Geavanceerd verbergen" : "▼ Geavanceerd: kraan-positie aanpassen voor plaatsing"}
+              </button>
+
+              {geavanceerd && (
+                <div style={{ padding: 10, background: "#f8f7ff", borderRadius: 6, border: "0.5px solid #ddd6fe" }}>
+                  <p style={{ fontSize: 11, color: "#6B4FB8", marginBottom: 8 }}>Horizontale positie</p>
+                  <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+                    {([
+                      { label: "Links", value: -Math.round(spoelbakBreedte() / 3) },
+                      { label: "Midden", value: 0 },
+                      { label: "Rechts", value: Math.round(spoelbakBreedte() / 3) },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.label}
+                        onClick={() => setKraanOffsetX(opt.value)}
+                        style={{
+                          flex: 1, padding: "5px 0", fontSize: 11,
+                          border: "0.5px solid",
+                          borderColor: kraanOffsetX === opt.value ? "#6B4FB8" : "#e2e8f0",
+                          borderRadius: 5,
+                          background: kraanOffsetX === opt.value ? "#ede9fe" : "white",
+                          color: kraanOffsetX === opt.value ? "#6B4FB8" : "#475569",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 10, color: "#94a3b8", marginBottom: 3 }}>Offset X (mm)</label>
+                      <input
+                        type="number" inputMode="numeric"
+                        value={kraanOffsetX}
+                        onChange={e => setKraanOffsetX(Number(e.target.value))}
+                        style={{ width: "100%", padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: 5, fontSize: 12, outline: "none", boxSizing: "border-box" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 10, color: "#94a3b8", marginBottom: 3 }}>Offset Y (mm)</label>
+                      <input
+                        type="number" inputMode="numeric"
+                        value={kraanOffsetY}
+                        onChange={e => setKraanOffsetY(Number(e.target.value))}
+                        style={{ width: "100%", padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: 5, fontSize: 12, outline: "none", boxSizing: "border-box" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -396,11 +620,37 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
             >
               ← Terug
             </button>
+            {isSpoelbak ? (
+              <button
+                onClick={handleNaarStap4}
+                style={{ flex: 2, padding: "8px 0", fontSize: 12, fontWeight: 500, border: "none", borderRadius: 6, background: "#0d9488", color: "white", cursor: "pointer" }}
+              >
+                Volgende →
+              </button>
+            ) : (
+              <button
+                onClick={handleToepassen}
+                style={{ flex: 2, padding: "8px 0", fontSize: 12, fontWeight: 500, border: "none", borderRadius: 6, background: "#0d9488", color: "white", cursor: "pointer" }}
+              >
+                Toevoegen
+              </button>
+            )}
+          </div>
+        )}
+
+        {stap === 4 && (
+          <div
+            style={{
+              padding: "12px 16px",
+              borderTop: "0.5px solid rgba(0,0,0,0.08)",
+              flexShrink: 0,
+            }}
+          >
             <button
-              onClick={handleToepassen}
-              style={{ flex: 2, padding: "8px 0", fontSize: 12, fontWeight: 500, border: "none", borderRadius: 6, background: "#0d9488", color: "white", cursor: "pointer" }}
+              onClick={() => setStap(3)}
+              style={{ padding: "6px 0", fontSize: 11, border: "none", background: "none", cursor: "pointer", color: "#94a3b8" }}
             >
-              Toevoegen
+              ← Terug naar positie
             </button>
           </div>
         )}
