@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from "react";
-import type { Blad, Point } from "../../data/seed-types";
+import type { Blad, Point, Sparing } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import {
   rechthoekOutline,
@@ -8,17 +8,20 @@ import {
   uitwaartsNormaal,
   segmentMidden,
 } from "../../drawing/bladHelpers";
+import { sparingPath } from "../../drawing/sparingHelpers";
 
 interface Viewport { x: number; y: number; scale: number }
 
 interface Props {
   blad: Blad;
   selectedSegmentIndex: number | null;
+  activeSparingId?: string | null;
   vp: Viewport;
   onVpChange: (vp: Viewport | ((prev: Viewport) => Viewport)) => void;
   onFitRef: React.MutableRefObject<(() => void) | null>;
   onSegmentTap: (segmentIndex: number) => void;
   onHoekTap: (cornerIndex: number) => void;
+  onSparingTap?: (id: string) => void;
 }
 
 const DIM_OFFSET = 50;
@@ -29,14 +32,23 @@ function pointsAttr(pts: Point[]): string {
   return pts.map(p => `${p.x},${p.y}`).join(" ");
 }
 
+function sparingKleur(type: Sparing["type"], actief: boolean): { fill: string; stroke: string } {
+  if (actief) return { fill: "#0d9488", stroke: "#0d9488" };
+  if (type === "KOOKPLAAT") return { fill: "#ef4444", stroke: "#dc2626" };
+  if (type === "SPOELBAK")  return { fill: "#3b82f6", stroke: "#2563eb" };
+  return { fill: "#94a3b8", stroke: "#64748b" };
+}
+
 export default function Canvas({
   blad,
   selectedSegmentIndex,
+  activeSparingId,
   vp,
   onVpChange,
   onFitRef,
   onSegmentTap,
   onHoekTap,
+  onSparingTap,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -322,6 +334,38 @@ export default function Canvas({
           stroke="#1e293b"
           strokeWidth={strokeW * 2}
         />
+
+        {/* Sparingen */}
+        {(blad.sparingen ?? []).map(sparing => {
+          const actief = sparing.id === activeSparingId;
+          const kleur = sparingKleur(sparing.type, actief);
+          return (
+            <g
+              key={sparing.id}
+              style={{ cursor: onSparingTap ? "pointer" : "default" }}
+              onPointerDown={(e) => { e.stopPropagation(); onSparingTap?.(sparing.id); }}
+            >
+              <path
+                d={sparingPath(sparing, "boven")}
+                fill={kleur.fill}
+                fillOpacity={actief ? 0.3 : 0.18}
+                stroke={kleur.stroke}
+                strokeWidth={strokeW * 1.5}
+              />
+              {sparing.vlakbouw && (
+                <path
+                  d={sparingPath(sparing, "onder")}
+                  fill="none"
+                  stroke={kleur.stroke}
+                  strokeWidth={strokeW}
+                  strokeDasharray={`${fontSizeMm * 0.4} ${fontSizeMm * 0.3}`}
+                  strokeOpacity={0.6}
+                  style={{ pointerEvents: "none" }}
+                />
+              )}
+            </g>
+          );
+        })}
 
         {/* m² watermerk */}
         <text
