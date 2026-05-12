@@ -379,7 +379,11 @@ export default function Step2Tekening({ state, dispatch }: Props) {
       </div>
 
       {/* Kolom 3: BladInfoPanel */}
-      <BladInfoPanel blad={geselecteerdBlad} state={state} />
+      <BladInfoPanel
+        blad={geselecteerdBlad}
+        state={state}
+        onBoorgatToevoegen={() => setToonBoorgatDialog(true)}
+      />
 
       {/* Mobiel drawer voor bladenlijst */}
       {lijstOpen && (
