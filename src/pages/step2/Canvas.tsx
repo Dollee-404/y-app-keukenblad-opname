@@ -16,6 +16,7 @@ interface Props {
   blad: Blad;
   selectedSegmentIndex: number | null;
   activeSparingId?: string | null;
+  materiaalSoort?: string;
   vp: Viewport;
   onVpChange: (vp: Viewport | ((prev: Viewport) => Viewport)) => void;
   onFitRef: React.MutableRefObject<(() => void) | null>;
@@ -39,10 +40,13 @@ function sparingKleur(type: Sparing["type"], actief: boolean): { fill: string; s
   return { fill: "#94a3b8", stroke: "#64748b" };
 }
 
+const COMPOSIET_SOORTEN = new Set(["COMPOSIET", "KWARTSCOMPOSIET"]);
+
 export default function Canvas({
   blad,
   selectedSegmentIndex,
   activeSparingId,
+  materiaalSoort,
   vp,
   onVpChange,
   onFitRef,
@@ -50,6 +54,7 @@ export default function Canvas({
   onHoekTap,
   onSparingTap,
 }: Props) {
+  const isComposiet = COMPOSIET_SOORTEN.has(materiaalSoort ?? "");
   const svgRef = useRef<SVGSVGElement>(null);
 
   const outline = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
@@ -363,24 +368,42 @@ export default function Canvas({
                   style={{ pointerEvents: "none" }}
                 />
               )}
+              {isComposiet && sparing.type === "KOOKPLAAT" && sparing.inbouwwijze === "VLAKBOUW" && (
+                <g style={{ pointerEvents: "none" }}>
+                  <title>Vlakbouw in composiet — risico op scheuren</title>
+                  <text
+                    x={sparing.positie.x + sparing.breedte / 2 - fontSizeMm * 0.1}
+                    y={sparing.positie.y - sparing.hoogte / 2 + fontSizeMm * 0.9}
+                    textAnchor="end"
+                    dominantBaseline="auto"
+                    fontSize={fontSizeMm * 0.9}
+                    fill="#d97706"
+                    fontFamily="system-ui, sans-serif"
+                  >
+                    ⚠
+                  </text>
+                </g>
+              )}
             </g>
           );
         })}
 
-        {/* m² watermerk */}
-        <text
-          x={cx}
-          y={cy}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="#94a3b8"
-          fillOpacity={0.7}
-          fontSize={fontSizeMm * 1.4}
-          fontFamily="system-ui, sans-serif"
-          style={{ pointerEvents: "none", userSelect: "none" }}
-        >
-          {m2.toFixed(2)} m²
-        </text>
+        {/* m² watermerk — verborgen zodra er sparingen zijn */}
+        {!blad.sparingen?.length && (
+          <text
+            x={cx}
+            y={cy}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="#94a3b8"
+            fillOpacity={0.7}
+            fontSize={fontSizeMm * 1.4}
+            fontFamily="system-ui, sans-serif"
+            style={{ pointerEvents: "none", userSelect: "none" }}
+          >
+            {m2.toFixed(2)} m²
+          </text>
+        )}
 
         {/* Hoekpunten: wit met teal stroke */}
         {outline.map((p, i) => (
