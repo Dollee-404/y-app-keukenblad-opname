@@ -176,8 +176,10 @@ export type SpoelbakProduct = {
   merk: string;
   model: string;
   inbouwwijze: InbouwwijzeCode;
-  sparing_mm?: [number | null, number | null];
-  uitwendige_maat_mm?: [number, number];
+  sparing_boven_mm: [number, number];
+  sparing_onder_mm: [number, number];
+  radius_mm: number;
+  trede_mm: number;
   opmerking?: string;
 };
 
@@ -283,6 +285,9 @@ export type Blad = {
   // randafwerking per zijde
   randen: Rand[];
 
+  // sparingen op dit blad (kookplaat, spoelbak, vrije rechthoek)
+  sparingen?: Sparing[];
+
   // L-vorm hoekuitsparingen
   hoekuitsparingen?: Rect[];
 
@@ -302,30 +307,34 @@ export type Sparing = {
   id: string;
   type: SparingTypeCode;
   bladId: string;
-  inbouwwijze?: InbouwwijzeCode;
+  inbouwwijze: InbouwwijzeCode;
 
   // referentie naar productcatalogus
   productMerk?: string;
   productModel?: string;
 
-  // positie op het blad (vanaf linksonder, in mm)
-  positie?: Point;
+  // positie midden van sparing, vanaf linksonder blad (mm)
+  positie: Point;
 
-  // afmetingen
-  rechthoek?: { breedte: number; hoogte: number };
+  // afmetingen rechthoek (bij vlakbouw: de boven-maten)
+  breedte: number;
+  hoogte: number;
 
-  // boorgat-specifiek
-  diameter?: number;                      // mm
+  // vlakbouw extra (dubbele lijn: boven + onder)
+  vlakbouw?: {
+    breedteOnder: number;
+    hoogteOnder: number;
+    radiusMm: number;
+    tredeMm: number;
+  };
+
+  // hoekafronding (niet-vlakbouw)
+  radiusMm?: number;
+
+  // boorgat-specifiek (deel 2)
+  diameter?: number;
   boorgatDoel?: BoorgatDoelCode;
   aantal?: number;
-
-  // vlakbouw-detail
-  vlakbouw?: {
-    sparingBoven: [number, number];
-    sparingOnder: [number, number];
-    radius: number;
-    trede: number;
-  };
 
   notitie?: string;
 };

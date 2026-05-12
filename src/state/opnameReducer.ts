@@ -1,6 +1,6 @@
 import seedRaw from "../data/seed-data.json";
 import { legeOpname } from "../data/seed-types";
-import type { SeedData, Opname, Adres, Blad } from "../data/seed-types";
+import type { SeedData, Opname, Adres, Blad, Sparing } from "../data/seed-types";
 
 const seed = seedRaw as unknown as SeedData;
 
@@ -20,7 +20,10 @@ export type OpnameAction =
   | { type: "BLAD_VERWIJDEREN"; id: string }
   | { type: "BLAD_BIJWERKEN"; id: string; patch: Partial<Blad> }
   | { type: "SEGMENT_SELECTEREN"; bladId: string; segmentIndex: number }
-  | { type: "SEGMENT_DESELECTEREN" };
+  | { type: "SEGMENT_DESELECTEREN" }
+  | { type: "SPARING_TOEVOEGEN"; bladId: string; sparing: Sparing }
+  | { type: "SPARING_VERWIJDEREN"; bladId: string; id: string }
+  | { type: "SPARING_BIJWERKEN"; bladId: string; id: string; patch: Partial<Sparing> };
 
 export function opnameReducer(state: Opname, action: OpnameAction): Opname {
   switch (action.type) {
@@ -116,5 +119,40 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
     case "SEGMENT_SELECTEREN":
     case "SEGMENT_DESELECTEREN":
       return state;
+
+    case "SPARING_TOEVOEGEN":
+      return {
+        ...state,
+        bladen: state.bladen.map(b =>
+          b.id === action.bladId
+            ? { ...b, sparingen: [...(b.sparingen ?? []), action.sparing] }
+            : b
+        ),
+      };
+
+    case "SPARING_VERWIJDEREN":
+      return {
+        ...state,
+        bladen: state.bladen.map(b =>
+          b.id === action.bladId
+            ? { ...b, sparingen: (b.sparingen ?? []).filter(s => s.id !== action.id) }
+            : b
+        ),
+      };
+
+    case "SPARING_BIJWERKEN":
+      return {
+        ...state,
+        bladen: state.bladen.map(b =>
+          b.id === action.bladId
+            ? {
+                ...b,
+                sparingen: (b.sparingen ?? []).map(s =>
+                  s.id === action.id ? { ...s, ...action.patch } : s
+                ),
+              }
+            : b
+        ),
+      };
   }
 }

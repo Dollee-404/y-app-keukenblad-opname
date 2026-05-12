@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from "react";
-import type { Blad, Point } from "../../data/seed-types";
+import type { Blad, Point, Sparing } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import {
   rechthoekOutline,
@@ -8,17 +8,21 @@ import {
   uitwaartsNormaal,
   segmentMidden,
 } from "../../drawing/bladHelpers";
+import { sparingPath } from "../../drawing/sparingHelpers";
 
 interface Viewport { x: number; y: number; scale: number }
 
 interface Props {
   blad: Blad;
   selectedSegmentIndex: number | null;
+  activeSparingId?: string | null;
+  materiaalSoort?: string;
   vp: Viewport;
   onVpChange: (vp: Viewport | ((prev: Viewport) => Viewport)) => void;
   onFitRef: React.MutableRefObject<(() => void) | null>;
   onSegmentTap: (segmentIndex: number) => void;
   onHoekTap: (cornerIndex: number) => void;
+  onSparingTap?: (id: string) => void;
 }
 
 const DIM_OFFSET = 50;
@@ -29,15 +33,28 @@ function pointsAttr(pts: Point[]): string {
   return pts.map(p => `${p.x},${p.y}`).join(" ");
 }
 
+function sparingKleur(type: Sparing["type"], actief: boolean): { fill: string; stroke: string } {
+  if (actief) return { fill: "#0d9488", stroke: "#0d9488" };
+  if (type === "KOOKPLAAT") return { fill: "#ef4444", stroke: "#dc2626" };
+  if (type === "SPOELBAK")  return { fill: "#3b82f6", stroke: "#2563eb" };
+  return { fill: "#94a3b8", stroke: "#64748b" };
+}
+
+const COMPOSIET_SOORTEN = new Set(["COMPOSIET", "KWARTSCOMPOSIET"]);
+
 export default function Canvas({
   blad,
   selectedSegmentIndex,
+  activeSparingId,
+  materiaalSoort,
   vp,
   onVpChange,
   onFitRef,
   onSegmentTap,
   onHoekTap,
+  onSparingTap,
 }: Props) {
+  const isComposiet = COMPOSIET_SOORTEN.has(materiaalSoort ?? "");
   const svgRef = useRef<SVGSVGElement>(null);
 
   const outline = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
@@ -323,20 +340,70 @@ export default function Canvas({
           strokeWidth={strokeW * 2}
         />
 
-        {/* m² watermerk */}
-        <text
-          x={cx}
-          y={cy}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="#94a3b8"
-          fillOpacity={0.7}
-          fontSize={fontSizeMm * 1.4}
-          fontFamily="system-ui, sans-serif"
-          style={{ pointerEvents: "none", userSelect: "none" }}
-        >
-          {m2.toFixed(2)} m²
-        </text>
+        {/* Sparingen */}
+        {(blad.sparingen ?? []).map(sparing => {
+          const actief = sparing.id === activeSparingId;
+          const kleur = sparingKleur(sparing.type, actief);
+          return (
+            <g
+              key={sparing.id}
+              style={{ cursor: onSparingTap ? "pointer" : "default" }}
+              onPointerDown={(e) => { e.stopPropagation(); onSparingTap?.(sparing.id); }}
+            >
+              <path
+                d={sparingPath(sparing, "boven")}
+                fill={kleur.fill}
+                fillOpacity={actief ? 0.3 : 0.18}
+                stroke={kleur.stroke}
+                strokeWidth={strokeW * 1.5}
+              />
+              {sparing.vlakbouw && (
+                <path
+                  d={sparingPath(sparing, "onder")}
+                  fill="none"
+                  stroke={kleur.stroke}
+                  strokeWidth={strokeW}
+                  strokeDasharray={`${fontSizeMm * 0.4} ${fontSizeMm * 0.3}`}
+                  strokeOpacity={0.6}
+                  style={{ pointerEvents: "none" }}
+                />
+              )}
+              {isComposiet && sparing.type === "KOOKPLAAT" && sparing.inbouwwijze === "VLAKBOUW" && (
+                <g style={{ pointerEvents: "none" }}>
+                  <title>Vlakbouw in composiet — risico op scheuren</title>
+                  <text
+                    x={sparing.positie.x + sparing.breedte / 2 - fontSizeMm * 0.1}
+                    y={sparing.positie.y - sparing.hoogte / 2 + fontSizeMm * 0.9}
+                    textAnchor="end"
+                    dominantBaseline="auto"
+                    fontSize={fontSizeMm * 0.9}
+                    fill="#d97706"
+                    fontFamily="system-ui, sans-serif"
+                  >
+                    ⚠
+                  </text>
+                </g>
+              )}
+            </g>
+          );
+        })}
+
+        {/* m² watermerk — verborgen zodra er sparingen zijn */}
+        {!blad.sparingen?.length && (
+          <text
+            x={cx}
+            y={cy}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="#94a3b8"
+            fillOpacity={0.7}
+            fontSize={fontSizeMm * 1.4}
+            fontFamily="system-ui, sans-serif"
+            style={{ pointerEvents: "none", userSelect: "none" }}
+          >
+            {m2.toFixed(2)} m²
+          </text>
+        )}
 
         {/* Hoekpunten: wit met teal stroke */}
         {outline.map((p, i) => (
