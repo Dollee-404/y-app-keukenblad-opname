@@ -187,15 +187,20 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
       };
     }
 
-    case "BOORGAT_TOEVOEGEN":
+    case "BOORGAT_TOEVOEGEN": {
+      const gekoppeldSparingId = action.boorgat.gekoppeldAan?.sparingId;
       return {
         ...state,
-        bladen: state.bladen.map(b =>
-          b.id === action.bladId
-            ? { ...b, boorgaten: [...(b.boorgaten ?? []), action.boorgat] }
-            : b
-        ),
+        bladen: state.bladen.map(b => {
+          if (b.id !== action.bladId) return b;
+          // Prevent duplicate gekoppelde kraan per spoelbak (e.g. double-click on stap 4)
+          if (gekoppeldSparingId && (b.boorgaten ?? []).some(bg => bg.gekoppeldAan?.sparingId === gekoppeldSparingId)) {
+            return b;
+          }
+          return { ...b, boorgaten: [...(b.boorgaten ?? []), action.boorgat] };
+        }),
       };
+    }
 
     case "BOORGAT_BIJWERKEN":
       return {

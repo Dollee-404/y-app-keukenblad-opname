@@ -207,6 +207,8 @@ export default function Canvas({
 
     const lengte = Math.round(lengtes[i]);
     const textAngle = Math.atan2(q.y - p.y, q.x - p.x) * (180 / Math.PI);
+    // Normalize so text is never upside-down (bottom edge has angle=180°)
+    const displayAngle = textAngle > 90 || textAngle < -90 ? textAngle + 180 : textAngle;
     const isActief = i === selectedSegmentIndex;
 
     const lineColor = isActief ? "#0d9488" : "#475569";
@@ -230,7 +232,7 @@ export default function Canvas({
               height={fontSizeMm * 1.5}
               fill={textBg}
               rx={fontSizeMm * 0.3}
-              transform={`rotate(${textAngle} ${mx} ${my})`}
+              transform={`rotate(${displayAngle} ${mx} ${my})`}
             />
           );
         })()}
@@ -245,7 +247,7 @@ export default function Canvas({
           paintOrder="stroke"
           fontSize={fontSizeMm}
           fontFamily="system-ui, sans-serif"
-          transform={`rotate(${textAngle} ${mx} ${my})`}
+          transform={`rotate(${displayAngle} ${mx} ${my})`}
         >
           {lengte}
         </text>
@@ -320,7 +322,7 @@ export default function Canvas({
     );
   }
 
-  function renderBoorgat(bg: Boorgat) {
+  function renderBoorgat(bg: Boorgat, labelYShift: number) {
     const r = bg.diameter / 2;
     const bgY = fy(bg.positie.y);
     const tapR = r + Math.max(10, 14 / vp.scale);
@@ -349,7 +351,7 @@ export default function Canvas({
           style={{ pointerEvents: "none" }}
         />
         <text
-          x={bg.positie.x + r + fontSizeMm * 0.35} y={bgY}
+          x={bg.positie.x + r + fontSizeMm * 0.35} y={bgY + labelYShift}
           textAnchor="start" dominantBaseline="middle"
           fontSize={fontSizeMm * 0.75} fill={kleur}
           stroke="white" strokeWidth={fontSizeMm * 0.2} paintOrder="stroke"
@@ -361,7 +363,7 @@ export default function Canvas({
         {bg.notitie && (
           <text
             x={bg.positie.x + r + fontSizeMm * 0.35}
-            y={bgY + fontSizeMm * 0.9}
+            y={bgY + fontSizeMm * 0.9 + labelYShift}
             fontSize={fontSizeMm * 0.8} textAnchor="start" dominantBaseline="middle"
             style={{ pointerEvents: "none", userSelect: "none" }}
           >
@@ -487,6 +489,32 @@ export default function Canvas({
     return lijnen;
   }
 
+  // Compute vertical label offsets for boorgaten whose labels would otherwise overlap.
+  // Label starts at positie.x + radius — if two boorgaten are within CLUSTER_THRESHOLD mm
+  // horizontally, stack their labels vertically by assigning sequential slots.
+  const boorgatLabelOffsets = (() => {
+    const boorgaten = blad.boorgaten ?? [];
+    const offsets = new Map<string, number>();
+    const sorted = [...boorgaten].sort((a, b) => a.positie.x - b.positie.x || a.id.localeCompare(b.id));
+    const CLUSTER_THRESHOLD = fontSizeMm * 3;
+    for (let i = 0; i < sorted.length; i++) {
+      const myLabelX = sorted[i].positie.x + sorted[i].diameter / 2;
+      let slot = 0;
+      for (;;) {
+        const slotOffset = slot * fontSizeMm * 1.1;
+        const taken = sorted.slice(0, i).some(
+          prev =>
+            Math.abs(prev.positie.x + prev.diameter / 2 - myLabelX) < CLUSTER_THRESHOLD &&
+            offsets.get(prev.id) === slotOffset,
+        );
+        if (!taken) break;
+        slot++;
+      }
+      offsets.set(sorted[i].id, slot * fontSizeMm * 1.1);
+    }
+    return offsets;
+  })();
+
   const transform = `translate(${vp.x} ${vp.y}) scale(${vp.scale})`;
   const m2 = oppervlakteM2(blad);
   const cx = (bb.minX + bb.maxX) / 2;
@@ -585,7 +613,7 @@ export default function Canvas({
         {renderBoorgatGroepLijnen()}
 
         {/* Boorgaten */}
-        {(blad.boorgaten ?? []).map(bg => renderBoorgat(bg))}
+        {(blad.boorgaten ?? []).map(bg => renderBoorgat(bg, boorgatLabelOffsets.get(bg.id) ?? 0))}
 
         {/* m² watermerk — verborgen zodra er sparingen of boorgaten zijn */}
         {!blad.sparingen?.length && !blad.boorgaten?.length && (
