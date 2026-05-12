@@ -93,18 +93,32 @@ export default function BladInfoPanel({ blad, state }: Props) {
           <p style={{ fontSize: 11, color: "#94a3b8" }}>Geen sparingen</p>
         ) : (
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
-            {blad.sparingen.map(s => (
-              <li key={s.id} style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 500, color: "#0f172a" }}>
-                  {SPARING_LABELS[s.type] ?? s.type}
-                </span>
-                {(s.productMerk || s.productModel) && (
-                  <span style={{ fontSize: 10, color: "#64748b" }}>
-                    {[s.productMerk, s.productModel].filter(Boolean).join(" ")}
+            {blad.sparingen.map(s => {
+              const isComposiet = ["COMPOSIET", "KWARTSCOMPOSIET"].includes(
+                blad.materiaalOverride?.soort ?? state.materiaal?.soort ?? ""
+              );
+              const toonRisicoIcon = isComposiet && s.type === "KOOKPLAAT" && s.inbouwwijze === "VLAKBOUW";
+              return (
+                <li key={s.id} style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: "#0f172a" }}>
+                    {SPARING_LABELS[s.type] ?? s.type}
                   </span>
-                )}
-              </li>
-            ))}
+                  {(s.productMerk || s.productModel) && (
+                    <span style={{ fontSize: 10, color: "#64748b" }}>
+                      {[s.productMerk, s.productModel].filter(Boolean).join(" ")}
+                    </span>
+                  )}
+                  {toonRisicoIcon && (
+                    <span
+                      title="Vlakbouw in composiet — risico op scheuren"
+                      style={{ fontSize: 11, color: "#d97706", marginLeft: 2, cursor: "default" }}
+                    >
+                      ⚠
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

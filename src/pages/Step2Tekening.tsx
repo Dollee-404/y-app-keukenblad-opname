@@ -197,6 +197,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
               blad={geselecteerdBlad}
               selectedSegmentIndex={actieveSegment}
               activeSparingId={activeSparingId}
+              materiaalSoort={geselecteerdBlad.materiaalOverride?.soort ?? state.materiaal?.soort}
               vp={vp}
               onVpChange={setVp}
               onFitRef={fitRef}
