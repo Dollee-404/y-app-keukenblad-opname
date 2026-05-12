@@ -991,7 +991,7 @@
     },
     {
       "code": "ELEKTRA",
-      "label": "Elektra",
+      "label": "Stopcontact",
       "default_diameter_mm": 70
     },
     {
@@ -1011,7 +1011,7 @@
     },
     {
       "code": "DOORVOER",
-      "label": "Doorvoer",
+      "label": "Leiding-doorvoer",
       "default_diameter_mm": 70
     },
     {
