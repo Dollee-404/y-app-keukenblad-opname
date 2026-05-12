@@ -1,11 +1,13 @@
 import { useState, useRef, useCallback } from "react";
-import type { Opname } from "../data/seed-types";
+import type { Opname, Sparing } from "../data/seed-types";
 import type { OpnameAction } from "../state/opnameReducer";
 import BladList from "./step2/BladList";
 import NieuwBladDialog from "./step2/NieuwBladDialog";
 import Canvas from "./step2/Canvas";
 import SegmentPanel from "./step2/SegmentPanel";
 import HoekUithapDialog from "./step2/HoekUithapDialog";
+import SparingDialog from "./step2/SparingDialog";
+import SparingPanel from "./step2/SparingPanel";
 import CanvasToolbar from "./step2/CanvasToolbar";
 import CanvasStatusBar from "./step2/CanvasStatusBar";
 import BladInfoPanel from "./step2/BladInfoPanel";
@@ -28,8 +30,10 @@ interface Props {
 export default function Step2Tekening({ state, dispatch }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toonNieuwDialog, setToonNieuwDialog] = useState(false);
+  const [toonSparingDialog, setToonSparingDialog] = useState(false);
   const [actieveSegment, setActieveSegment] = useState<number | null>(null);
   const [actieveHoek, setActieveHoek] = useState<number | null>(null);
+  const [activeSparingId, setActiveSparingId] = useState<string | null>(null);
   const [lijstOpen, setLijstOpen] = useState(false);
   const [vp, setVp] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -54,12 +58,38 @@ export default function Step2Tekening({ state, dispatch }: Props) {
 
   function handleSegmentTap(segmentIndex: number) {
     setActieveHoek(null);
+    setActiveSparingId(null);
     setActieveSegment(segmentIndex);
   }
 
   function handleHoekTap(cornerIndex: number) {
     setActieveSegment(null);
+    setActiveSparingId(null);
     setActieveHoek(cornerIndex);
+  }
+
+  function handleSparingTap(id: string) {
+    setActieveSegment(null);
+    setActieveHoek(null);
+    setActiveSparingId(prev => (prev === id ? null : id));
+  }
+
+  function handleSparingToevoegen(sparing: Sparing) {
+    if (!geselecteerdBlad) return;
+    dispatch({ type: "SPARING_TOEVOEGEN", bladId: geselecteerdBlad.id, sparing });
+    setToonSparingDialog(false);
+    setActiveSparingId(sparing.id);
+  }
+
+  function handleSparingBijwerken(id: string, patch: Partial<Sparing>) {
+    if (!geselecteerdBlad) return;
+    dispatch({ type: "SPARING_BIJWERKEN", bladId: geselecteerdBlad.id, id, patch });
+  }
+
+  function handleSparingVerwijderen(id: string) {
+    if (!geselecteerdBlad) return;
+    dispatch({ type: "SPARING_VERWIJDEREN", bladId: geselecteerdBlad.id, id });
+    setActiveSparingId(null);
   }
 
   function handleSegmentOpslaan(nieuweLengte: number) {
@@ -112,6 +142,24 @@ export default function Step2Tekening({ state, dispatch }: Props) {
 
   const popoverPos = segmentPopoverPos();
 
+  const sparingPopoverPos = useCallback((): { left: number; top: number } | null => {
+    if (!activeSparingId || !geselecteerdBlad?.sparingen || !canvasContainerRef.current) return null;
+    const sparing = geselecteerdBlad.sparingen.find(s => s.id === activeSparingId);
+    if (!sparing) return null;
+    const anchorX = sparing.positie.x * vp.scale + vp.x;
+    const anchorY = (sparing.positie.y - sparing.hoogte / 2) * vp.scale + vp.y - 16;
+    const container = canvasContainerRef.current;
+    const panelW = 330;
+    const panelH = 155;
+    const margin = 8;
+    const left = Math.max(margin, Math.min(anchorX - panelW / 2, container.clientWidth - panelW - margin));
+    const top = Math.max(margin, Math.min(anchorY - panelH, container.clientHeight - panelH - margin));
+    return { left, top };
+  }, [activeSparingId, geselecteerdBlad, vp]);
+
+  const sparingPopPos = sparingPopoverPos();
+  const actieveSparing = geselecteerdBlad?.sparingen?.find(s => s.id === activeSparingId) ?? null;
+
   return (
     <div className="flex flex-row h-full min-h-0 overflow-hidden">
 
@@ -138,6 +186,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
           onZoomIn={() => setVp(v => ({ ...v, scale: Math.min(20, v.scale * 1.2) }))}
           onZoomOut={() => setVp(v => ({ ...v, scale: Math.max(0.05, v.scale / 1.2) }))}
           onFitScreen={() => fitRef.current?.()}
+          onSparingToevoegen={() => setToonSparingDialog(true)}
           onDrawerOpen={() => setLijstOpen(true)}
         />
 
@@ -147,11 +196,13 @@ export default function Step2Tekening({ state, dispatch }: Props) {
             <Canvas
               blad={geselecteerdBlad}
               selectedSegmentIndex={actieveSegment}
+              activeSparingId={activeSparingId}
               vp={vp}
               onVpChange={setVp}
               onFitRef={fitRef}
               onSegmentTap={handleSegmentTap}
               onHoekTap={handleHoekTap}
+              onSparingTap={handleSparingTap}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
@@ -175,6 +226,28 @@ export default function Step2Tekening({ state, dispatch }: Props) {
                 onSluiten={() => setActieveSegment(null)}
               />
             </div>
+          )}
+
+          {/* Floating SparingPanel */}
+          {actieveSparing && sparingPopPos && (
+            <div style={{ position: "absolute", left: sparingPopPos.left, top: sparingPopPos.top, zIndex: 20 }}>
+              <SparingPanel
+                sparing={actieveSparing}
+                onBijwerken={(patch) => handleSparingBijwerken(actieveSparing.id, patch)}
+                onVerwijderen={() => handleSparingVerwijderen(actieveSparing.id)}
+                onSluiten={() => setActiveSparingId(null)}
+              />
+            </div>
+          )}
+
+          {/* SparingDialog */}
+          {toonSparingDialog && geselecteerdBlad && (
+            <SparingDialog
+              blad={geselecteerdBlad}
+              state={state}
+              onToevoegen={handleSparingToevoegen}
+              onSluiten={() => setToonSparingDialog(false)}
+            />
           )}
 
           {/* HoekUithapDialog: gecentreerd binnen canvas-area */}
