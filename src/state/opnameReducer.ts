@@ -1,6 +1,6 @@
 import seedRaw from "../data/seed-data.json";
 import { legeOpname } from "../data/seed-types";
-import type { SeedData, Opname, Adres, Blad, Sparing } from "../data/seed-types";
+import type { SeedData, Opname, Adres, Blad, Sparing, Boorgat } from "../data/seed-types";
 
 const seed = seedRaw as unknown as SeedData;
 
@@ -23,7 +23,10 @@ export type OpnameAction =
   | { type: "SEGMENT_DESELECTEREN" }
   | { type: "SPARING_TOEVOEGEN"; bladId: string; sparing: Sparing }
   | { type: "SPARING_VERWIJDEREN"; bladId: string; id: string }
-  | { type: "SPARING_BIJWERKEN"; bladId: string; id: string; patch: Partial<Sparing> };
+  | { type: "SPARING_BIJWERKEN"; bladId: string; id: string; patch: Partial<Sparing> }
+  | { type: "BOORGAT_TOEVOEGEN"; bladId: string; boorgat: Boorgat }
+  | { type: "BOORGAT_VERWIJDEREN"; bladId: string; id: string }
+  | { type: "BOORGAT_BIJWERKEN"; bladId: string; id: string; patch: Partial<Boorgat> };
 
 export function opnameReducer(state: Opname, action: OpnameAction): Opname {
   switch (action.type) {
@@ -133,11 +136,22 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
     case "SPARING_VERWIJDEREN":
       return {
         ...state,
-        bladen: state.bladen.map(b =>
-          b.id === action.bladId
-            ? { ...b, sparingen: (b.sparingen ?? []).filter(s => s.id !== action.id) }
-            : b
-        ),
+        bladen: state.bladen.map(b => {
+          if (b.id !== action.bladId) return b;
+          const sparingen = (b.sparingen ?? []).filter(s => s.id !== action.id);
+          // Silent fix: verwijder referenties naar de verwijderde sparing
+          const boorgatenmSchoon = (b.boorgaten ?? []).map(bg =>
+            bg.referentie?.type === "VORIGE_SPARING" && bg.referentie.sparingId === action.id
+              ? { ...bg, referentie: undefined }
+              : bg
+          );
+          const sparingenSchoon = sparingen.map(s =>
+            s.referentie?.type === "VORIGE_SPARING" && s.referentie.sparingId === action.id
+              ? { ...s, referentie: undefined }
+              : s
+          );
+          return { ...b, sparingen: sparingenSchoon, boorgaten: boorgatenmSchoon };
+        }),
       };
 
     case "SPARING_BIJWERKEN":
@@ -154,5 +168,62 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
             : b
         ),
       };
+
+    case "BOORGAT_TOEVOEGEN":
+      return {
+        ...state,
+        bladen: state.bladen.map(b =>
+          b.id === action.bladId
+            ? { ...b, boorgaten: [...(b.boorgaten ?? []), action.boorgat] }
+            : b
+        ),
+      };
+
+    case "BOORGAT_BIJWERKEN":
+      return {
+        ...state,
+        bladen: state.bladen.map(b =>
+          b.id === action.bladId
+            ? {
+                ...b,
+                boorgaten: (b.boorgaten ?? []).map(bg =>
+                  bg.id === action.id ? { ...bg, ...action.patch } : bg
+                ),
+              }
+            : b
+        ),
+      };
+
+    case "BOORGAT_VERWIJDEREN": {
+      return {
+        ...state,
+        bladen: state.bladen.map(b => {
+          if (b.id !== action.bladId) return b;
+          const verwijderd = (b.boorgaten ?? []).find(bg => bg.id === action.id);
+          const resterend = (b.boorgaten ?? []).filter(bg => bg.id !== action.id);
+
+          // Hernummer groep-leden na verwijdering
+          const groepId = verwijderd?.groepId;
+          let volgnummer = 1;
+          const hernummerd = resterend.map(bg => {
+            if (!groepId || bg.groepId !== groepId) return bg;
+            return { ...bg, groepVolgnummer: volgnummer++ };
+          });
+
+          // Silent fix: verwijder referenties naar het verwijderde boorgat
+          const schoongemaakt = hernummerd.map(bg =>
+            bg.referentie?.type === "VORIG_BOORGAT" && bg.referentie.boorgatId === action.id
+              ? { ...bg, referentie: undefined }
+              : bg
+          );
+          const sparingenSchoon = (b.sparingen ?? []).map(s =>
+            s.referentie?.type === "VORIG_BOORGAT" && s.referentie.boorgatId === action.id
+              ? { ...s, referentie: undefined }
+              : s
+          );
+          return { ...b, boorgaten: schoongemaakt, sparingen: sparingenSchoon };
+        }),
+      };
+    }
   }
 }
