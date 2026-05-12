@@ -40,6 +40,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
   const [activeSparingId, setActiveSparingId] = useState<string | null>(null);
   const [activeBoorgatId, setActiveBoorgatId] = useState<string | null>(null);
   const [lijstOpen, setLijstOpen] = useState(false);
+  const [confirmVerwijderSparingId, setConfirmVerwijderSparingId] = useState<string | null>(null);
   const [vp, setVp] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<(() => void) | null>(null);
@@ -79,9 +80,12 @@ export default function Step2Tekening({ state, dispatch }: Props) {
     setActiveSparingId(prev => (prev === id ? null : id));
   }
 
-  function handleSparingToevoegen(sparing: Sparing) {
+  function handleSparingToevoegen(sparing: Sparing, boorgat?: Boorgat) {
     if (!geselecteerdBlad) return;
     dispatch({ type: "SPARING_TOEVOEGEN", bladId: geselecteerdBlad.id, sparing });
+    if (boorgat) {
+      dispatch({ type: "BOORGAT_TOEVOEGEN", bladId: geselecteerdBlad.id, boorgat });
+    }
     setToonSparingDialog(false);
     setActiveSparingId(sparing.id);
   }
@@ -93,8 +97,13 @@ export default function Step2Tekening({ state, dispatch }: Props) {
 
   function handleSparingVerwijderen(id: string) {
     if (!geselecteerdBlad) return;
-    dispatch({ type: "SPARING_VERWIJDEREN", bladId: geselecteerdBlad.id, id });
-    setActiveSparingId(null);
+    const heeftGekoppeld = (geselecteerdBlad.boorgaten ?? []).some(bg => bg.gekoppeldAan?.sparingId === id);
+    if (heeftGekoppeld) {
+      setConfirmVerwijderSparingId(id);
+    } else {
+      dispatch({ type: "SPARING_VERWIJDEREN", bladId: geselecteerdBlad.id, id });
+      setActiveSparingId(null);
+    }
   }
 
   function handleBoorgatTap(id: string) {
@@ -102,26 +111,6 @@ export default function Step2Tekening({ state, dispatch }: Props) {
     setActieveHoek(null);
     setActiveSparingId(null);
     setActiveBoorgatId(prev => (prev === id ? null : id));
-  }
-
-  function handleKraangatToevoegen(sparingId: string) {
-    if (!geselecteerdBlad) return;
-    const sparing = geselecteerdBlad.sparingen?.find(s => s.id === sparingId);
-    if (!sparing) return;
-    const boorgat: Boorgat = {
-      id: `bg-${Date.now()}`,
-      bladId: geselecteerdBlad.id,
-      doel: "KRAAN",
-      diameter: 35,
-      doorboring: true,
-      positie: {
-        x: sparing.positie.x,
-        y: sparing.positie.y + sparing.hoogte / 2 + 50,
-      },
-    };
-    dispatch({ type: "BOORGAT_TOEVOEGEN", bladId: geselecteerdBlad.id, boorgat });
-    setActiveSparingId(null);
-    setActiveBoorgatId(boorgat.id);
   }
 
   function handleBoorgatToevoegen(boorgat: Boorgat) {
@@ -323,7 +312,6 @@ export default function Step2Tekening({ state, dispatch }: Props) {
                 blad={geselecteerdBlad}
                 onBijwerken={(patch) => handleSparingBijwerken(actieveSparing.id, patch)}
                 onVerwijderen={() => handleSparingVerwijderen(actieveSparing.id)}
-                onKraangatToevoegen={actieveSparing.type === "SPOELBAK" ? () => handleKraangatToevoegen(actieveSparing.id) : undefined}
                 onSluiten={() => setActiveSparingId(null)}
               />
             </div>
@@ -362,6 +350,45 @@ export default function Step2Tekening({ state, dispatch }: Props) {
               onToevoegen={handleBoorgatToevoegen}
               onSluiten={() => setToonBoorgatDialog(false)}
             />
+          )}
+
+          {/* Confirm dialog: verwijder spoelbak met gekoppelde kraan */}
+          {confirmVerwijderSparingId && geselecteerdBlad && (
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }} onClick={() => setConfirmVerwijderSparingId(null)} />
+              <div style={{
+                position: "relative", background: "white", borderRadius: 12,
+                padding: "20px 20px 16px", maxWidth: 320, width: "90%",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+              }}>
+                <p style={{ fontSize: 13, color: "#0f172a", marginBottom: 16, lineHeight: 1.5 }}>
+                  Spoelbak wordt verwijderd. Wil je de bijbehorende kraan ook verwijderen?
+                </p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => {
+                      dispatch({ type: "SPARING_VERWIJDEREN", bladId: geselecteerdBlad.id, id: confirmVerwijderSparingId, verwijderGekoppeld: false });
+                      setActiveSparingId(null);
+                      setConfirmVerwijderSparingId(null);
+                    }}
+                    style={{ flex: 1, padding: "8px 0", fontSize: 12, border: "0.5px solid #cbd5e1", borderRadius: 6, background: "white", cursor: "pointer", color: "#475569" }}
+                  >
+                    Behoud kraan
+                  </button>
+                  <button
+                    onClick={() => {
+                      dispatch({ type: "SPARING_VERWIJDEREN", bladId: geselecteerdBlad.id, id: confirmVerwijderSparingId, verwijderGekoppeld: true });
+                      setActiveSparingId(null);
+                      setActiveBoorgatId(null);
+                      setConfirmVerwijderSparingId(null);
+                    }}
+                    style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 500, border: "none", borderRadius: 6, background: "#dc2626", color: "white", cursor: "pointer" }}
+                  >
+                    Verwijder beide
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* HoekUithapDialog: gecentreerd binnen canvas-area */}

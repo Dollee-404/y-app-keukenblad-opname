@@ -147,6 +147,9 @@ export default function BladInfoPanel({ blad, state, onBoorgatToevoegen }: Props
                   {risico && (
                     <span title="<60mm van bladrand — risico" style={{ fontSize: 11, color: "#d97706", flexShrink: 0 }}>⚠</span>
                   )}
+                  {bg.gekoppeldAan && (
+                    <span title="Gekoppeld aan sparing" style={{ fontSize: 10, color: "#6B4FB8", flexShrink: 0 }}>⛓</span>
+                  )}
                   {bg.groepId && (
                     <span style={{
                       fontSize: 9, padding: "1px 4px",
