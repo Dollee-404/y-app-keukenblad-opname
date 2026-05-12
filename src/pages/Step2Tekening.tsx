@@ -104,6 +104,26 @@ export default function Step2Tekening({ state, dispatch }: Props) {
     setActiveBoorgatId(prev => (prev === id ? null : id));
   }
 
+  function handleKraangatToevoegen(sparingId: string) {
+    if (!geselecteerdBlad) return;
+    const sparing = geselecteerdBlad.sparingen?.find(s => s.id === sparingId);
+    if (!sparing) return;
+    const boorgat: Boorgat = {
+      id: `bg-${Date.now()}`,
+      bladId: geselecteerdBlad.id,
+      doel: "KRAAN",
+      diameter: 35,
+      doorboring: true,
+      positie: {
+        x: sparing.positie.x,
+        y: sparing.positie.y + sparing.hoogte / 2 + 50,
+      },
+    };
+    dispatch({ type: "BOORGAT_TOEVOEGEN", bladId: geselecteerdBlad.id, boorgat });
+    setActiveSparingId(null);
+    setActiveBoorgatId(boorgat.id);
+  }
+
   function handleBoorgatToevoegen(boorgat: Boorgat) {
     if (!geselecteerdBlad) return;
     dispatch({ type: "BOORGAT_TOEVOEGEN", bladId: geselecteerdBlad.id, boorgat });
@@ -296,12 +316,14 @@ export default function Step2Tekening({ state, dispatch }: Props) {
           )}
 
           {/* Floating SparingPanel */}
-          {actieveSparing && sparingPopPos && (
+          {actieveSparing && sparingPopPos && geselecteerdBlad && (
             <div style={{ position: "absolute", left: sparingPopPos.left, top: sparingPopPos.top, zIndex: 20 }}>
               <SparingPanel
                 sparing={actieveSparing}
+                blad={geselecteerdBlad}
                 onBijwerken={(patch) => handleSparingBijwerken(actieveSparing.id, patch)}
                 onVerwijderen={() => handleSparingVerwijderen(actieveSparing.id)}
+                onKraangatToevoegen={actieveSparing.type === "SPOELBAK" ? () => handleKraangatToevoegen(actieveSparing.id) : undefined}
                 onSluiten={() => setActiveSparingId(null)}
               />
             </div>

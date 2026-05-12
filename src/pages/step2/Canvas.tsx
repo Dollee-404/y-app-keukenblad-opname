@@ -422,6 +422,65 @@ export default function Canvas({
     return result;
   }
 
+  function renderReferentieLijnen() {
+    const sparingen = blad.sparingen ?? [];
+    const boorgaten = blad.boorgaten ?? [];
+    const ol = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
+    const xs = ol.map(p => p.x);
+    const ys = ol.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+
+    const lijnen: React.ReactNode[] = [];
+
+    function lijnNaarPunt(key: string, van: { x: number; y: number }, naar: { x: number; y: number }) {
+      lijnen.push(
+        <line
+          key={key}
+          x1={van.x} y1={van.y} x2={naar.x} y2={naar.y}
+          stroke="#94a3b8"
+          strokeWidth={strokeW * 0.6}
+          strokeDasharray={`${fontSizeMm * 0.4} ${fontSizeMm * 0.2}`}
+          strokeOpacity={0.7}
+          style={{ pointerEvents: "none" }}
+        />
+      );
+    }
+
+    function referentieoorsprong(ref: NonNullable<(typeof boorgaten)[0]["referentie"]>, pos: { x: number; y: number }): { x: number; y: number } | null {
+      switch (ref.type) {
+        case "LINKSONDER": return null;
+        case "LINKERRAND": return { x: minX, y: pos.y };
+        case "RECHTERRAND": return { x: maxX, y: pos.y };
+        case "MIDDEN_BLAD": return { x: midX, y: midY };
+        case "VORIGE_SPARING": {
+          const s = sparingen.find(s => s.id === ref.sparingId);
+          return s ? { x: s.positie.x, y: s.positie.y } : null;
+        }
+        case "VORIG_BOORGAT": {
+          const bg = boorgaten.find(bg => bg.id === ref.boorgatId);
+          return bg ? { x: bg.positie.x, y: bg.positie.y } : null;
+        }
+      }
+    }
+
+    const actiefBoorgat = boorgaten.find(bg => bg.id === activeBoorgatId);
+    if (actiefBoorgat?.referentie && actiefBoorgat.referentie.type !== "LINKSONDER") {
+      const orig = referentieoorsprong(actiefBoorgat.referentie, actiefBoorgat.positie);
+      if (orig) lijnNaarPunt(`ref-bg-${actiefBoorgat.id}`, orig, actiefBoorgat.positie);
+    }
+
+    const actieveSparing = sparingen.find(s => s.id === activeSparingId);
+    if (actieveSparing?.referentie && actieveSparing.referentie.type !== "LINKSONDER") {
+      const orig = referentieoorsprong(actieveSparing.referentie, actieveSparing.positie);
+      if (orig) lijnNaarPunt(`ref-sp-${actieveSparing.id}`, orig, actieveSparing.positie);
+    }
+
+    return lijnen;
+  }
+
   const transform = `translate(${vp.x} ${vp.y}) scale(${vp.scale})`;
   const m2 = oppervlakteM2(blad);
   const cx = (bb.minX + bb.maxX) / 2;
@@ -511,6 +570,9 @@ export default function Canvas({
             </g>
           );
         })}
+
+        {/* Referentielijntjes (gestippeld grijs naar referentiepunt) */}
+        {renderReferentieLijnen()}
 
         {/* Groepverbindingslijnen */}
         {renderBoorgatGroepLijnen()}

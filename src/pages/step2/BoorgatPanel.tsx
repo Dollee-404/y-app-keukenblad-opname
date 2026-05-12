@@ -90,6 +90,57 @@ export default function BoorgatPanel({
     }
   }
 
+  function referentieNaarWaarde(ref: MaatReferentie | null): string {
+    if (!ref) return "LINKSONDER";
+    switch (ref.type) {
+      case "LINKSONDER": return "LINKSONDER";
+      case "LINKERRAND": return `LINKERRAND_${ref.offsetVanaf}`;
+      case "RECHTERRAND": return `RECHTERRAND_${ref.offsetVanaf}`;
+      case "MIDDEN_BLAD": return "MIDDEN_BLAD";
+      case "VORIGE_SPARING": return `VORIGE_SPARING_${ref.sparingId}`;
+      case "VORIG_BOORGAT": return `VORIG_BOORGAT_${ref.boorgatId}`;
+    }
+  }
+
+  function waardeNaarReferentie(val: string): MaatReferentie | null {
+    if (val === "LINKSONDER") return null;
+    if (val === "LINKERRAND_onder") return { type: "LINKERRAND", offsetVanaf: "onder" };
+    if (val === "LINKERRAND_boven") return { type: "LINKERRAND", offsetVanaf: "boven" };
+    if (val === "RECHTERRAND_onder") return { type: "RECHTERRAND", offsetVanaf: "onder" };
+    if (val === "RECHTERRAND_boven") return { type: "RECHTERRAND", offsetVanaf: "boven" };
+    if (val === "MIDDEN_BLAD") return { type: "MIDDEN_BLAD" };
+    if (val.startsWith("VORIGE_SPARING_")) return { type: "VORIGE_SPARING", sparingId: val.slice("VORIGE_SPARING_".length) };
+    if (val.startsWith("VORIG_BOORGAT_")) return { type: "VORIG_BOORGAT", boorgatId: val.slice("VORIG_BOORGAT_".length) };
+    return null;
+  }
+
+  function xLabel(): string {
+    if (!referentie) return "X (mm)";
+    switch (referentie.type) {
+      case "RECHTERRAND": return "Afstand rechterrand (mm)";
+      case "LINKERRAND": return "Afstand linkerrand (mm)";
+      case "MIDDEN_BLAD": return "X t.o.v. midden (mm)";
+      case "VORIGE_SPARING": return "X t.o.v. sparing (mm)";
+      case "VORIG_BOORGAT": return "X t.o.v. boorgat (mm)";
+      default: return "X (mm)";
+    }
+  }
+
+  function yLabel(): string {
+    if (!referentie) return "Y (mm)";
+    switch (referentie.type) {
+      case "LINKERRAND":
+      case "RECHTERRAND":
+        return referentie.offsetVanaf === "boven" ? "Hoogte vanaf boven (mm)" : "Hoogte vanaf onder (mm)";
+      case "MIDDEN_BLAD": return "Y t.o.v. midden (mm)";
+      case "VORIGE_SPARING": return "Y t.o.v. sparing (mm)";
+      case "VORIG_BOORGAT": return "Y t.o.v. boorgat (mm)";
+      default: return "Y (mm)";
+    }
+  }
+
+  const andereBoorgatten = (blad.boorgaten ?? []).filter(bg => bg.id !== boorgat.id);
+
   const doelLabel = seed.boorgat_doelen.find(d => d.code === boorgat.doel)?.label ?? boorgat.doel;
   const liveX = parseInt(x, 10) || boorgat.positie.x;
   const liveY = parseInt(y, 10) || boorgat.positie.y;
@@ -131,11 +182,40 @@ export default function BoorgatPanel({
         </button>
       </div>
 
+      {/* Maat-referentie */}
+      <div style={{ marginBottom: 8 }}>
+        <label style={{ display: "block", fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>
+          Gemeten vanaf
+        </label>
+        <select
+          value={referentieNaarWaarde(referentie)}
+          onChange={e => handleReferentieWijzigen(waardeNaarReferentie(e.target.value))}
+          style={{ ...inputStyle, background: "white", cursor: "pointer" }}
+        >
+          <option value="LINKSONDER">Linksonder blad</option>
+          <option value="LINKERRAND_onder">Linkerrand (vanaf onder)</option>
+          <option value="LINKERRAND_boven">Linkerrand (vanaf boven)</option>
+          <option value="RECHTERRAND_onder">Rechterrand (vanaf onder)</option>
+          <option value="RECHTERRAND_boven">Rechterrand (vanaf boven)</option>
+          <option value="MIDDEN_BLAD">Midden blad</option>
+          {(blad.sparingen ?? []).map(s => (
+            <option key={s.id} value={`VORIGE_SPARING_${s.id}`}>
+              Vorige sparing: {s.productModel ?? s.type}
+            </option>
+          ))}
+          {andereBoorgatten.map(bg => (
+            <option key={bg.id} value={`VORIG_BOORGAT_${bg.id}`}>
+              Vorig boorgat: {seed.boorgat_doelen.find(d => d.code === bg.doel)?.label ?? bg.doel}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Positie */}
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <div style={{ flex: 1 }}>
           <label style={{ display: "block", fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>
-            X (mm)
+            {xLabel()}
           </label>
           <input
             type="number" inputMode="numeric" value={x}
@@ -147,7 +227,7 @@ export default function BoorgatPanel({
         </div>
         <div style={{ flex: 1 }}>
           <label style={{ display: "block", fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>
-            Y (mm)
+            {yLabel()}
           </label>
           <input
             type="number" inputMode="numeric" value={y}
