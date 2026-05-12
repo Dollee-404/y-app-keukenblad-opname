@@ -2,6 +2,7 @@ import seedRaw from "../../data/seed-data.json";
 import type { SeedData, Blad, Opname } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import { rechthoekOutline, segmentLengtes } from "../../drawing/bladHelpers";
+import { randAfstand } from "../../drawing/boorgatHelpers";
 
 const seed = seedRaw as unknown as SeedData;
 
@@ -136,12 +137,16 @@ export default function BladInfoPanel({ blad, state, onBoorgatToevoegen }: Props
           <ul style={{ margin: 0, padding: "0 0 6px", listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
             {blad.boorgaten.map(bg => {
               const doelLabel = seed.boorgat_doelen.find(d => d.code === bg.doel)?.label ?? bg.doel;
+              const { risico } = randAfstand(bg.positie, bg.diameter, blad);
               return (
                 <li key={bg.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   <span style={{ fontSize: 10, color: "#6B4FB8", flexShrink: 0, lineHeight: 1 }}>○</span>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: "#0f172a" }}>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: "#0f172a", flex: 1 }}>
                     {doelLabel} · Ø{bg.diameter}
                   </span>
+                  {risico && (
+                    <span title="<60mm van bladrand — risico" style={{ fontSize: 11, color: "#d97706", flexShrink: 0 }}>⚠</span>
+                  )}
                   {bg.groepId && (
                     <span style={{
                       fontSize: 9, padding: "1px 4px",

@@ -322,6 +322,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
             <div style={{ position: "absolute", left: boorgatPopPos.left, top: boorgatPopPos.top, zIndex: 20 }}>
               <BoorgatPanel
                 boorgat={actieveBoorgat}
+                blad={geselecteerdBlad}
                 onBijwerken={(patch) => handleBoorgatBijwerken(actieveBoorgat.id, patch)}
                 onVerwijderen={() => handleBoorgatVerwijderen(actieveBoorgat.id)}
                 onVolgendToevoegen={(richting, hartAfstand) =>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import seedRaw from "../../data/seed-data.json";
-import type { SeedData, Boorgat } from "../../data/seed-types";
+import type { SeedData, Boorgat, Blad } from "../../data/seed-types";
+import { randAfstand } from "../../drawing/boorgatHelpers";
 
 const seed = seedRaw as unknown as SeedData;
 
@@ -8,6 +9,7 @@ type Richting = "rechts" | "links" | "boven" | "onder";
 
 interface Props {
   boorgat: Boorgat;
+  blad: Blad;
   onBijwerken: (patch: Partial<Boorgat>) => void;
   onVerwijderen: () => void;
   onVolgendToevoegen: (richting: Richting, hartAfstand: number) => void;
@@ -25,6 +27,7 @@ const RICHTING_LABELS: Record<Richting, string> = {
 
 export default function BoorgatPanel({
   boorgat,
+  blad,
   onBijwerken,
   onVerwijderen,
   onVolgendToevoegen,
@@ -67,6 +70,10 @@ export default function BoorgatPanel({
   }
 
   const doelLabel = seed.boorgat_doelen.find(d => d.code === boorgat.doel)?.label ?? boorgat.doel;
+  const liveX = parseInt(x, 10) || boorgat.positie.x;
+  const liveY = parseInt(y, 10) || boorgat.positie.y;
+  const liveDiameter = parseInt(diameter, 10) || boorgat.diameter;
+  const randCheck = randAfstand({ x: liveX, y: liveY }, liveDiameter, blad);
 
   const inputStyle = {
     width: "100%",
@@ -186,6 +193,18 @@ export default function BoorgatPanel({
           ))}
         </div>
       </div>
+
+      {/* Rand-afstand warning */}
+      {randCheck.risico && (
+        <div style={{ background: "#fffbeb", borderLeft: "3px solid #b45309", borderRadius: "0 6px 6px 0", padding: "8px 10px", marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+            <span style={{ fontSize: 14, lineHeight: 1.4, flexShrink: 0 }}>⚠</span>
+            <p style={{ fontSize: 11, color: "#78350f", margin: 0 }}>
+              {randCheck.minAfstand}mm van bladrand — risico op breuk.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Sub-actie: volgend boorgat */}
       <div style={{ marginBottom: 10 }}>

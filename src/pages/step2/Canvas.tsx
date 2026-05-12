@@ -9,6 +9,7 @@ import {
   segmentMidden,
 } from "../../drawing/bladHelpers";
 import { sparingPath } from "../../drawing/sparingHelpers";
+import { randAfstand } from "../../drawing/boorgatHelpers";
 
 interface Viewport { x: number; y: number; scale: number }
 
@@ -322,6 +323,7 @@ export default function Canvas({
     const actief = bg.id === activeBoorgatId;
     const kleur = actief ? "#4338ca" : "#6B4FB8";
     const dasharray = bg.doorboring ? undefined : `${fontSizeMm * 0.4} ${fontSizeMm * 0.25}`;
+    const { risico } = randAfstand(bg.positie, bg.diameter, blad);
     return (
       <g
         key={bg.id}
@@ -361,6 +363,18 @@ export default function Canvas({
           >
             <title>{bg.notitie}</title>
             ✏
+          </text>
+        )}
+        {risico && (
+          <text
+            x={bg.positie.x - r - fontSizeMm * 0.1}
+            y={bg.positie.y - r}
+            fontSize={fontSizeMm * 0.85} textAnchor="end" dominantBaseline="middle"
+            fill="#b45309"
+            style={{ pointerEvents: "none", userSelect: "none" }}
+          >
+            <title>Boorgat &lt;60mm van bladrand — risico op breuk</title>
+            ⚠
           </text>
         )}
       </g>
