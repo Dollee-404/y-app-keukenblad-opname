@@ -1,4 +1,9 @@
 import { useState } from "react";
+import {
+  IconBolt, IconPlug, IconPlugConnected,
+  IconDroplet, IconDroplets, IconBottle,
+  IconCylinder, IconCircleDot, IconWind, IconCircle,
+} from "@tabler/icons-react";
 import seedRaw from "../../data/seed-data.json";
 import type { SeedData, Boorgat, BoorgatDoelCode, Blad } from "../../data/seed-types";
 import { rechthoekOutline } from "../../drawing/bladHelpers";
@@ -15,10 +20,51 @@ interface Props {
 let teller = 0;
 function nieuweId(): string { return `bg-${++teller}`; }
 
-const DOEL_ICONEN: Record<string, string> = {
-  KRAAN: "🚿", QUOOKER: "🔥", ELEKTRA: "⚡", DUBBELE_WCD: "🔌",
-  ZEEPPOMP: "🧴", DOWNDRAFT: "💨", DOORVOER: "⭕", OVERIG: "○",
+type DoelInfo = {
+  code: BoorgatDoelCode;
+  label: string;
+  sub: string;
+  Icon: React.ElementType;
 };
+
+type Categorie = {
+  label: string;
+  kleur: string;
+  Icon: React.ElementType;
+  doelen: DoelInfo[];
+};
+
+const CATEGORIEEN: Categorie[] = [
+  {
+    label: "STROOM",
+    kleur: "#b45309",
+    Icon: IconBolt,
+    doelen: [
+      { code: "ELEKTRA",     label: "Stopcontact",  sub: "Ø70 enkel",  Icon: IconPlug },
+      { code: "DUBBELE_WCD", label: "Dubbele wcd",  sub: "Ø70 dubbel", Icon: IconPlugConnected },
+    ],
+  },
+  {
+    label: "WATER",
+    kleur: "#0369a1",
+    Icon: IconDroplet,
+    doelen: [
+      { code: "KRAAN",    label: "Losse kraan",  sub: "Ø35",  Icon: IconDroplet },
+      { code: "QUOOKER",  label: "Quooker",      sub: "Ø35",  Icon: IconDroplets },
+      { code: "ZEEPPOMP", label: "Zeeppomp",     sub: "Ø35",  Icon: IconBottle },
+    ],
+  },
+  {
+    label: "DOORVOER & OVERIG",
+    kleur: "#64748b",
+    Icon: IconCylinder,
+    doelen: [
+      { code: "DOORVOER", label: "Leiding-doorvoer", sub: "Ø70 kabel/buis", Icon: IconCircleDot },
+      { code: "DOWNDRAFT", label: "Downdraft",       sub: "eigen diameter", Icon: IconWind },
+      { code: "OVERIG",   label: "Overig",           sub: "eigen diameter", Icon: IconCircle },
+    ],
+  },
+];
 
 const QUICK_DIAMETERS = [35, 50, 70, 90];
 
@@ -55,13 +101,11 @@ export default function BoorgatDialog({ blad, onToevoegen, onSluiten }: Props) {
     });
   }
 
-  // Live rand-afstand check
   const x = Number(posX) || defaultX;
   const y = Number(posY) || defaultY;
   const d = Number(diameter) || 35;
   const randCheck = stap === 3 ? randAfstand({ x, y }, d, blad) : null;
 
-  // Preview SVG
   const outline = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
   const xs = outline.map(p => p.x);
   const ys = outline.map(p => p.y);
@@ -70,7 +114,19 @@ export default function BoorgatDialog({ blad, onToevoegen, onSluiten }: Props) {
 
   const inputKlasse = "w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500";
 
-  const doelLabel = doel ? (seed.boorgat_doelen.find(d => d.code === doel)?.label ?? doel) : "";
+  const doelInfo = CATEGORIEEN.flatMap(c => c.doelen).find(d => d.code === doel);
+  const doelLabel = doelInfo?.label ?? (doel ? (seed.boorgat_doelen.find(d => d.code === doel)?.label ?? doel) : "");
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 6,
+  };
 
   return (
     <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40 }}>
@@ -93,28 +149,53 @@ export default function BoorgatDialog({ blad, onToevoegen, onSluiten }: Props) {
         {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
 
-          {/* Stap 1 — Doel kiezen */}
+          {/* Stap 1 — Doel kiezen met categorieën */}
           {stap === 1 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              {seed.boorgat_doelen.map(doel => (
-                <button
-                  key={doel.code}
-                  onClick={() => handleDoelKiezen(doel.code as BoorgatDoelCode)}
-                  style={{
-                    minHeight: 76, padding: 10, border: "0.5px solid #e2e8f0", borderRadius: 8,
-                    background: "white", cursor: "pointer", display: "flex", flexDirection: "column",
-                    alignItems: "center", justifyContent: "center", gap: 4,
-                    transition: "background 0.12s",
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#f0fdfa")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "white")}
-                >
-                  <span style={{ fontSize: 22 }}>{DOEL_ICONEN[doel.code] ?? "○"}</span>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: "#0f172a" }}>{doel.label}</span>
-                  {doel.default_diameter_mm && (
-                    <span style={{ fontSize: 10, color: "#94a3b8" }}>Ø{doel.default_diameter_mm}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {CATEGORIEEN.map(cat => (
+                <div key={cat.label}>
+                  {/* Categorie-header */}
+                  <div style={{ ...labelStyle, color: cat.kleur, marginBottom: 6 }}>
+                    <cat.Icon size={13} stroke={1.5} />
+                    {cat.label}
+                  </div>
+                  {/* Keuze-knoppen */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {cat.doelen.map(doel => (
+                      <button
+                        key={doel.code}
+                        onClick={() => handleDoelKiezen(doel.code)}
+                        style={{
+                          minHeight: 52,
+                          padding: "10px 14px",
+                          border: "0.5px solid #e2e8f0",
+                          borderRadius: 8,
+                          background: "white",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          textAlign: "left",
+                          transition: "background 0.12s",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "white")}
+                      >
+                        <doel.Icon size={20} stroke={1.5} color="#475569" style={{ flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: "#0f172a" }}>{doel.label}</div>
+                          <div style={{ fontSize: 11, color: "#94a3b8" }}>{doel.sub}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Hint-tekst onder Water */}
+                  {cat.label === "WATER" && (
+                    <p style={{ fontSize: 10, color: "#94a3b8", margin: "6px 2px 0", lineHeight: 1.4 }}>
+                      Tip: kraan bij spoelbak gaat sneller via de spoelbak-flow
+                    </p>
                   )}
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -195,7 +276,6 @@ export default function BoorgatDialog({ blad, onToevoegen, onSluiten }: Props) {
                 </div>
               </div>
 
-              {/* Rand-afstand warning */}
               {randCheck?.risico && (
                 <div style={{ background: "#fffbeb", borderLeft: "3px solid #b45309", borderRadius: "0 6px 6px 0", padding: "10px 12px" }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -207,7 +287,6 @@ export default function BoorgatDialog({ blad, onToevoegen, onSluiten }: Props) {
                 </div>
               )}
 
-              {/* Mini preview */}
               <div style={{ borderRadius: 6, border: "0.5px solid #e2e8f0", background: "#f8fafc", padding: 8 }}>
                 <p style={{ fontSize: 10, color: "#94a3b8", marginBottom: 4 }}>Voorvertoon</p>
                 <svg viewBox={`-20 -20 ${vbW + 20} ${vbH + 20}`} style={{ width: "100%", maxHeight: 110 }} aria-label="Positie-preview">
