@@ -441,7 +441,7 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
                   />
                   <rect
                     x={previewX - previewBreedte / 2}
-                    y={previewY - previewHoogte / 2}
+                    y={blad.breedte - previewY - previewHoogte / 2}
                     width={previewBreedte}
                     height={previewHoogte}
                     fill="#0d948820"
@@ -477,14 +477,14 @@ export default function SparingDialog({ blad, state, onToevoegen, onSluiten }: P
                   />
                   <rect
                     x={previewX - previewBreedte / 2}
-                    y={previewY - previewHoogte / 2}
+                    y={blad.breedte - previewY - previewHoogte / 2}
                     width={previewBreedte} height={previewHoogte}
                     fill="#3b82f620" stroke="#3b82f6"
                     strokeWidth={Math.max(blad.lengte, blad.breedte) * 0.005}
                   />
                   <circle
                     cx={previewX + kraanOffsetX}
-                    cy={previewY + kraanOffsetY}
+                    cy={blad.breedte - previewY - kraanOffsetY}
                     r={Math.max(blad.lengte, blad.breedte) * 0.012}
                     fill="none" stroke="#6B4FB8"
                     strokeWidth={Math.max(blad.lengte, blad.breedte) * 0.006}

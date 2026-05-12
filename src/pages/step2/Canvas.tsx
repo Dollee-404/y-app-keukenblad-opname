@@ -66,6 +66,9 @@ export default function Canvas({
   const lengtes = segmentLengtes(outline);
   const bb = boundingBox(outline);
 
+  // SVG Y=0 is at top; datamodel Y=0 is at physical bottom — flip for rendering.
+  const fy = (y: number) => blad.breedte - y;
+
   function computeFit(w: number, h: number): Viewport {
     const margin = DIM_OFFSET * 2 + 20;
     const bW = bb.maxX - bb.minX + margin * 2;
@@ -319,6 +322,7 @@ export default function Canvas({
 
   function renderBoorgat(bg: Boorgat) {
     const r = bg.diameter / 2;
+    const bgY = fy(bg.positie.y);
     const tapR = r + Math.max(10, 14 / vp.scale);
     const actief = bg.id === activeBoorgatId;
     const kleur = actief ? "#4338ca" : "#6B4FB8";
@@ -330,22 +334,22 @@ export default function Canvas({
         style={{ cursor: onBoorgatTap ? "pointer" : "default" }}
         onPointerDown={(e) => { e.stopPropagation(); onBoorgatTap?.(bg.id); }}
       >
-        <circle cx={bg.positie.x} cy={bg.positie.y} r={tapR} fill="transparent" stroke="none" />
+        <circle cx={bg.positie.x} cy={bgY} r={tapR} fill="transparent" stroke="none" />
         {actief && (
           <circle
-            cx={bg.positie.x} cy={bg.positie.y} r={r + strokeW * 4}
+            cx={bg.positie.x} cy={bgY} r={r + strokeW * 4}
             fill={kleur} fillOpacity={0.12} stroke="none"
             style={{ pointerEvents: "none" }}
           />
         )}
         <circle
-          cx={bg.positie.x} cy={bg.positie.y} r={r}
+          cx={bg.positie.x} cy={bgY} r={r}
           fill="none" stroke={kleur} strokeWidth={strokeW * 1.5}
           strokeDasharray={dasharray}
           style={{ pointerEvents: "none" }}
         />
         <text
-          x={bg.positie.x + r + fontSizeMm * 0.35} y={bg.positie.y}
+          x={bg.positie.x + r + fontSizeMm * 0.35} y={bgY}
           textAnchor="start" dominantBaseline="middle"
           fontSize={fontSizeMm * 0.75} fill={kleur}
           stroke="white" strokeWidth={fontSizeMm * 0.2} paintOrder="stroke"
@@ -357,7 +361,7 @@ export default function Canvas({
         {bg.notitie && (
           <text
             x={bg.positie.x + r + fontSizeMm * 0.35}
-            y={bg.positie.y + fontSizeMm * 0.9}
+            y={bgY + fontSizeMm * 0.9}
             fontSize={fontSizeMm * 0.8} textAnchor="start" dominantBaseline="middle"
             style={{ pointerEvents: "none", userSelect: "none" }}
           >
@@ -368,7 +372,7 @@ export default function Canvas({
         {risico && (
           <text
             x={bg.positie.x - r - fontSizeMm * 0.1}
-            y={bg.positie.y - r}
+            y={bgY - r}
             fontSize={fontSizeMm * 0.85} textAnchor="end" dominantBaseline="middle"
             fill="#b45309"
             style={{ pointerEvents: "none", userSelect: "none" }}
@@ -395,13 +399,15 @@ export default function Canvas({
       for (let i = 0; i < gesorteerd.length - 1; i++) {
         const a = gesorteerd[i];
         const b = gesorteerd[i + 1];
+        const ayf = fy(a.positie.y);
+        const byf = fy(b.positie.y);
         const mx = (a.positie.x + b.positie.x) / 2;
-        const my = (a.positie.y + b.positie.y) / 2;
+        const my = (ayf + byf) / 2;
         const afstand = Math.round(Math.hypot(b.positie.x - a.positie.x, b.positie.y - a.positie.y));
         result.push(
           <g key={`groep-${groepId}-${i}`} style={{ pointerEvents: "none" }}>
             <line
-              x1={a.positie.x} y1={a.positie.y} x2={b.positie.x} y2={b.positie.y}
+              x1={a.positie.x} y1={ayf} x2={b.positie.x} y2={byf}
               stroke="#6B4FB8" strokeWidth={strokeW}
               strokeDasharray={`${fontSizeMm * 0.3} ${fontSizeMm * 0.2}`}
               strokeOpacity={0.5}
@@ -452,16 +458,16 @@ export default function Canvas({
     function referentieoorsprong(ref: NonNullable<(typeof boorgaten)[0]["referentie"]>, pos: { x: number; y: number }): { x: number; y: number } | null {
       switch (ref.type) {
         case "LINKSONDER": return null;
-        case "LINKERRAND": return { x: minX, y: pos.y };
-        case "RECHTERRAND": return { x: maxX, y: pos.y };
+        case "LINKERRAND": return { x: minX, y: fy(pos.y) };
+        case "RECHTERRAND": return { x: maxX, y: fy(pos.y) };
         case "MIDDEN_BLAD": return { x: midX, y: midY };
         case "VORIGE_SPARING": {
           const s = sparingen.find(s => s.id === ref.sparingId);
-          return s ? { x: s.positie.x, y: s.positie.y } : null;
+          return s ? { x: s.positie.x, y: fy(s.positie.y) } : null;
         }
         case "VORIG_BOORGAT": {
           const bg = boorgaten.find(bg => bg.id === ref.boorgatId);
-          return bg ? { x: bg.positie.x, y: bg.positie.y } : null;
+          return bg ? { x: bg.positie.x, y: fy(bg.positie.y) } : null;
         }
       }
     }
@@ -469,13 +475,13 @@ export default function Canvas({
     const actiefBoorgat = boorgaten.find(bg => bg.id === activeBoorgatId);
     if (actiefBoorgat?.referentie && actiefBoorgat.referentie.type !== "LINKSONDER") {
       const orig = referentieoorsprong(actiefBoorgat.referentie, actiefBoorgat.positie);
-      if (orig) lijnNaarPunt(`ref-bg-${actiefBoorgat.id}`, orig, actiefBoorgat.positie);
+      if (orig) lijnNaarPunt(`ref-bg-${actiefBoorgat.id}`, orig, { x: actiefBoorgat.positie.x, y: fy(actiefBoorgat.positie.y) });
     }
 
     const actieveSparing = sparingen.find(s => s.id === activeSparingId);
     if (actieveSparing?.referentie && actieveSparing.referentie.type !== "LINKSONDER") {
       const orig = referentieoorsprong(actieveSparing.referentie, actieveSparing.positie);
-      if (orig) lijnNaarPunt(`ref-sp-${actieveSparing.id}`, orig, actieveSparing.positie);
+      if (orig) lijnNaarPunt(`ref-sp-${actieveSparing.id}`, orig, { x: actieveSparing.positie.x, y: fy(actieveSparing.positie.y) });
     }
 
     return lijnen;
@@ -513,6 +519,7 @@ export default function Canvas({
         {(blad.sparingen ?? []).map(sparing => {
           const actief = sparing.id === activeSparingId;
           const kleur = sparingKleur(sparing.type, actief);
+          const rsp = { ...sparing, positie: { x: sparing.positie.x, y: fy(sparing.positie.y) } };
           return (
             <g
               key={sparing.id}
@@ -520,7 +527,7 @@ export default function Canvas({
               onPointerDown={(e) => { e.stopPropagation(); onSparingTap?.(sparing.id); }}
             >
               <path
-                d={sparingPath(sparing, "boven")}
+                d={sparingPath(rsp, "boven")}
                 fill={kleur.fill}
                 fillOpacity={actief ? 0.3 : 0.18}
                 stroke={kleur.stroke}
@@ -531,8 +538,8 @@ export default function Canvas({
               )}
               {sparing.notitie && (
                 <text
-                  x={sparing.positie.x + sparing.breedte / 2 + fontSizeMm * 0.1}
-                  y={sparing.positie.y + sparing.hoogte / 2 - fontSizeMm * 0.1}
+                  x={rsp.positie.x + rsp.breedte / 2 + fontSizeMm * 0.1}
+                  y={rsp.positie.y + rsp.hoogte / 2 - fontSizeMm * 0.1}
                   fontSize={fontSizeMm * 0.85}
                   textAnchor="start" dominantBaseline="auto"
                   style={{ pointerEvents: "none", userSelect: "none" }}
@@ -542,7 +549,7 @@ export default function Canvas({
               )}
               {sparing.vlakbouw && (
                 <path
-                  d={sparingPath(sparing, "onder")}
+                  d={sparingPath(rsp, "onder")}
                   fill="none"
                   stroke={kleur.stroke}
                   strokeWidth={strokeW}
@@ -555,8 +562,8 @@ export default function Canvas({
                 <g style={{ pointerEvents: "none" }}>
                   <title>Vlakbouw in composiet — risico op scheuren</title>
                   <text
-                    x={sparing.positie.x + sparing.breedte / 2 - fontSizeMm * 0.1}
-                    y={sparing.positie.y - sparing.hoogte / 2 + fontSizeMm * 0.9}
+                    x={rsp.positie.x + rsp.breedte / 2 - fontSizeMm * 0.1}
+                    y={rsp.positie.y - rsp.hoogte / 2 + fontSizeMm * 0.9}
                     textAnchor="end"
                     dominantBaseline="auto"
                     fontSize={fontSizeMm * 0.9}

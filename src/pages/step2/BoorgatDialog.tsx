@@ -296,7 +296,7 @@ export default function BoorgatDialog({ blad, onToevoegen, onSluiten }: Props) {
                     strokeWidth={Math.max(blad.lengte, blad.breedte) * 0.005}
                   />
                   <circle
-                    cx={x} cy={y} r={d / 2}
+                    cx={x} cy={blad.breedte - y} r={d / 2}
                     fill="none" stroke="#6B4FB8"
                     strokeWidth={Math.max(blad.lengte, blad.breedte) * 0.005}
                   />

@@ -201,7 +201,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
     const sparing = geselecteerdBlad.sparingen.find(s => s.id === activeSparingId);
     if (!sparing) return null;
     const anchorX = sparing.positie.x * vp.scale + vp.x;
-    const anchorY = (sparing.positie.y - sparing.hoogte / 2) * vp.scale + vp.y - 16;
+    const anchorY = (geselecteerdBlad.breedte - sparing.positie.y - sparing.hoogte / 2) * vp.scale + vp.y - 16;
     const container = canvasContainerRef.current;
     const panelW = 330;
     const panelH = 155;
@@ -219,7 +219,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
     const bg = geselecteerdBlad.boorgaten.find(b => b.id === activeBoorgatId);
     if (!bg) return null;
     const anchorX = bg.positie.x * vp.scale + vp.x;
-    const anchorY = (bg.positie.y - bg.diameter / 2) * vp.scale + vp.y - 16;
+    const anchorY = (geselecteerdBlad.breedte - bg.positie.y - bg.diameter / 2) * vp.scale + vp.y - 16;
     const container = canvasContainerRef.current;
     const panelW = 320;
     const panelH = 310;
