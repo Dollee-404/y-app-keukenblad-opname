@@ -31,6 +31,53 @@ export function randAfstand(
 }
 
 /**
+ * Bereken de relatieve offset vanuit een absoluut punt terug naar een referentiekader.
+ * Inverse van absolutePositie.
+ */
+export function absoluteNaarReferentie(
+  absPos: Point,
+  referentie: MaatReferentie,
+  blad: Blad,
+  context: { sparingen: Sparing[]; boorgaten: Boorgat[] }
+): Point {
+  const outline = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
+  const xs = outline.map(p => p.x);
+  const ys = outline.map(p => p.y);
+  const bladMinX = Math.min(...xs);
+  const bladMaxX = Math.max(...xs);
+  const bladMinY = Math.min(...ys);
+  const bladMaxY = Math.max(...ys);
+
+  switch (referentie.type) {
+    case "LINKSONDER":
+      return { x: absPos.x - bladMinX, y: absPos.y - bladMinY };
+    case "LINKERRAND":
+      return referentie.offsetVanaf === "boven"
+        ? { x: absPos.x - bladMinX, y: bladMaxY - absPos.y }
+        : { x: absPos.x - bladMinX, y: absPos.y - bladMinY };
+    case "RECHTERRAND":
+      return referentie.offsetVanaf === "boven"
+        ? { x: bladMaxX - absPos.x, y: bladMaxY - absPos.y }
+        : { x: bladMaxX - absPos.x, y: absPos.y - bladMinY };
+    case "MIDDEN_BLAD":
+      return {
+        x: absPos.x - (bladMinX + bladMaxX) / 2,
+        y: absPos.y - (bladMinY + bladMaxY) / 2,
+      };
+    case "VORIGE_SPARING": {
+      const ref = context.sparingen.find(s => s.id === referentie.sparingId);
+      if (!ref) return absPos;
+      return { x: absPos.x - ref.positie.x, y: absPos.y - ref.positie.y };
+    }
+    case "VORIG_BOORGAT": {
+      const ref = context.boorgaten.find(bg => bg.id === referentie.boorgatId);
+      if (!ref) return absPos;
+      return { x: absPos.x - ref.positie.x, y: absPos.y - ref.positie.y };
+    }
+  }
+}
+
+/**
  * Genereer het volgende boorgat in een groep (D7 D70 patroon).
  * De positie wordt verschoven met hartAfstand in de opgegeven richting.
  */

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import seedRaw from "../../data/seed-data.json";
-import type { SeedData, Boorgat, Blad } from "../../data/seed-types";
-import { randAfstand } from "../../drawing/boorgatHelpers";
+import type { SeedData, Boorgat, Blad, MaatReferentie } from "../../data/seed-types";
+import { randAfstand, absolutePositie, absoluteNaarReferentie } from "../../drawing/boorgatHelpers";
 
 const seed = seedRaw as unknown as SeedData;
 
@@ -40,20 +40,41 @@ export default function BoorgatPanel({
   const [toonGroepActie, setToonGroepActie] = useState(false);
   const [richting, setRichting] = useState<Richting>("rechts");
   const [hartAfstand, setHartAfstand] = useState("70");
+  const [referentie, setReferentie] = useState<MaatReferentie | null>(boorgat.referentie ?? null);
+
+  const ctx = { sparingen: blad.sparingen ?? [], boorgaten: blad.boorgaten ?? [] };
 
   useEffect(() => {
-    setX(String(Math.round(boorgat.positie.x)));
-    setY(String(Math.round(boorgat.positie.y)));
+    const ref = boorgat.referentie ?? null;
+    setReferentie(ref);
+    const offset = ref
+      ? absoluteNaarReferentie(boorgat.positie, ref, blad, ctx)
+      : boorgat.positie;
+    setX(String(Math.round(offset.x)));
+    setY(String(Math.round(offset.y)));
     setDiameter(String(boorgat.diameter));
     setNotitie(boorgat.notitie ?? "");
-  }, [boorgat.id, boorgat.positie.x, boorgat.positie.y, boorgat.diameter, boorgat.notitie]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boorgat.id, boorgat.positie.x, boorgat.positie.y, boorgat.diameter, boorgat.notitie, boorgat.referentie]);
 
   function handlePosOpslaan() {
     const nx = parseInt(x, 10);
     const ny = parseInt(y, 10);
     if (!isNaN(nx) && !isNaN(ny)) {
-      onBijwerken({ positie: { x: nx, y: ny } });
+      const absPos = referentie
+        ? absolutePositie({ x: nx, y: ny }, referentie, blad, ctx)
+        : { x: nx, y: ny };
+      onBijwerken({ positie: absPos, referentie: referentie ?? undefined });
     }
+  }
+
+  function handleReferentieWijzigen(nieuw: MaatReferentie | null) {
+    setReferentie(nieuw);
+    const offset = nieuw
+      ? absoluteNaarReferentie(boorgat.positie, nieuw, blad, ctx)
+      : boorgat.positie;
+    setX(String(Math.round(offset.x)));
+    setY(String(Math.round(offset.y)));
   }
 
   function handleDiameterOpslaan() {
