@@ -2,27 +2,13 @@ import { useState, useMemo } from "react";
 import seedRaw from "../../data/seed-data.json";
 import type { SeedData, Opname, MateriaalCode, MateriaalKeuze } from "../../data/seed-types";
 import type { OpnameAction } from "../../state/opnameReducer";
+import { titleCase } from "../../drawing/titleCase";
 
 const seed = seedRaw as unknown as SeedData;
 
 interface Props {
   state: Opname;
   dispatch: React.Dispatch<OpnameAction>;
-}
-
-// 16×16 or 24×24 white square swatch (no hex in seed-data)
-function KleurSwatch({ size = 16, geselecteerd = false }: { size?: number; geselecteerd?: boolean }) {
-  return (
-    <span style={{
-      display: "inline-block",
-      width: size,
-      height: size,
-      flexShrink: 0,
-      background: "white",
-      border: `0.5px solid ${geselecteerd ? "#0d9488" : "#cbd5e1"}`,
-      borderRadius: 2,
-    }} />
-  );
 }
 
 interface MateriaalFormProps {
@@ -105,8 +91,7 @@ function MateriaalForm({ keuze, onChange, compact = false }: MateriaalFormProps)
         {/* Geselecteerde kleur — preview */}
         {keuze.kleur_code && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, padding: "6px 10px", background: "#f0fdfb", borderRadius: 6, border: "1px solid #ccfbf1" }}>
-            <KleurSwatch size={24} geselecteerd />
-            <span style={{ fontSize: 13, color: "#0d9488", fontWeight: 500 }}>✓ {keuze.kleur_label}</span>
+            <span style={{ fontSize: 13, color: "#0d9488", fontWeight: 500 }}>✓ {titleCase(keuze.kleur_label)}</span>
             <button
               onClick={() => onChange({ ...keuze, kleur_code: "", kleur_label: "" })}
               style={{ marginLeft: "auto", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16, padding: "0 2px" }}
@@ -148,9 +133,7 @@ function MateriaalForm({ keuze, onChange, compact = false }: MateriaalFormProps)
                     setZoek("");
                   }}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
+                    display: "block",
                     width: "100%",
                     textAlign: "left" as const,
                     padding: "7px 10px",
@@ -163,8 +146,7 @@ function MateriaalForm({ keuze, onChange, compact = false }: MateriaalFormProps)
                     fontWeight: isGeselecteerd ? 500 : 400,
                   }}
                 >
-                  <KleurSwatch geselecteerd={isGeselecteerd} />
-                  {kleur}
+                  {titleCase(kleur)}
                 </button>
               );
             })
@@ -260,7 +242,7 @@ export default function MateriaalSectie({ state, dispatch }: Props) {
                     </span>
                     <span style={{ fontSize: 11, color: "#94a3b8" }}>
                       {heeftOverride
-                        ? `${seed.materialen[blad.materiaalKeuze!.soort]?.label ?? blad.materiaalKeuze!.soort} · ${blad.materiaalKeuze!.dikte_mm}mm · ${blad.materiaalKeuze!.kleur_label || "—"}`
+                        ? `${seed.materialen[blad.materiaalKeuze!.soort]?.label ?? blad.materiaalKeuze!.soort} · ${blad.materiaalKeuze!.dikte_mm}mm · ${blad.materiaalKeuze!.kleur_label ? titleCase(blad.materiaalKeuze!.kleur_label) : "—"}`
                         : `${seed.materialen[projectKeuze.soort]?.label ?? projectKeuze.soort} (project)`
                       }
                     </span>
