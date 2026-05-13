@@ -29,7 +29,7 @@ export default function CanvasToolbar({
   onDrawerOpen,
 }: Props) {
   const matSoort = blad ? effectiefMateriaalSoort(blad, state) : "";
-  const dikte = blad?.dikte ?? "";
+  const dikte = blad?.materiaalKeuze?.dikte_mm ?? blad?.dikte ?? "";
   const werkstuk = blad?.werkstukType ?? "";
 
   const iconBtn = (label: string, onClick: () => void, disabled = false) => (

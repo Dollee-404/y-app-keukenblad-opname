@@ -29,7 +29,7 @@ function omtrekMm(blad: Blad): number {
 
 export default function BladInfoPanel({ blad, state, onBoorgatToevoegen }: Props) {
   const matSoort = blad ? effectiefMateriaalSoort(blad, state) : "—";
-  const dikte = blad?.dikte ?? "—";
+  const dikte = blad?.materiaalKeuze?.dikte_mm ?? blad?.dikte ?? "—";
   const kleur = blad?.materiaalOverride?.kleur ?? state.materiaal?.kleur ?? "—";
 
   const labelStyle: React.CSSProperties = {
