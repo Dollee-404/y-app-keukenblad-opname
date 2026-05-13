@@ -4,7 +4,31 @@ import type { SeedData, Opname, Adres, Blad, Sparing, Boorgat, MateriaalKeuze, R
 
 const seed = seedRaw as unknown as SeedData;
 
-export const initialState: Opname = legeOpname(seed);
+const _baseState = legeOpname(seed);
+export const initialState: Opname = import.meta.env.DEV ? {
+  ..._baseState,
+  bladen: [
+    {
+      id: "P1",
+      label: "Bladdeel A",
+      werkstukType: "Bladdeel A",
+      categorie: "WB",
+      lengte: 1958,
+      breedte: 800,
+      dikte: 20,
+      randen: [],
+      randafwerkingen: [
+        { zijdeId: "2", code: "DV40", label: "DV40 – verstek 40mm", type: "VERSTEK", hoogte_mm: 40 },
+        { zijdeId: "1", code: "T1-EF", label: "T1 enkel facet", type: "FACET" },
+      ],
+    },
+  ],
+  accessoires: [
+    { id: "acc-1", sku: "AFDEK30", naam: "Afdekprofiel 30mm", aantal: 4 },
+    { id: "acc-2", sku: "LIJM-KARLDUR", naam: "Karldur lijm tube", aantal: 3 },
+    { id: "acc-3", naam: "Speciaal anker bovenkant", aantal: 2 },
+  ],
+} : _baseState;
 
 export type OpnameAction =
   | { type: "SET_VERKOPER"; payload: Opname["verkoper"] }
