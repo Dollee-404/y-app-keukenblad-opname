@@ -1,10 +1,88 @@
 import seedRaw from "../data/seed-data.json";
 import { legeOpname } from "../data/seed-types";
-import type { SeedData, Opname, Adres, Blad, Sparing, Boorgat } from "../data/seed-types";
+import type { SeedData, Opname, Adres, Blad, Sparing, Boorgat, MateriaalKeuze, Randafwerking, AccessoireRegel, ZijdeId } from "../data/seed-types";
 
 const seed = seedRaw as unknown as SeedData;
 
-export const initialState: Opname = legeOpname(seed);
+const _baseState = legeOpname(seed);
+export const legeInitialState: Opname = _baseState;
+export const initialState: Opname = import.meta.env.DEV ? {
+  ..._baseState,
+  materiaalKeuze: {
+    soort: "COMPOSIET",
+    dikte_mm: 20,
+    kleur_code: "ADAMINA",
+    kleur_label: "Adamina",
+    leverancier: "Quartzforms",
+  },
+  bladen: [
+    {
+      id: "P1",
+      label: "Bladdeel A",
+      werkstukType: "Bladdeel A",
+      categorie: "WB",
+      lengte: 1958,
+      breedte: 800,
+      dikte: 20,
+      randen: [],
+      randafwerkingen: [
+        { zijdeId: "0", code: "DV40", label: "DV40 – verstek 40mm", type: "VERSTEK", hoogte_mm: 40 },
+        { zijdeId: "1", code: "T1-EF", label: "T1 enkel facet", type: "FACET" },
+        { zijdeId: "2", code: "DV40", label: "DV40 – verstek 40mm", type: "VERSTEK", hoogte_mm: 40 },
+        { zijdeId: "3", code: "KF", label: "Klein facet", type: "FACET" },
+      ],
+      sparingen: [
+        {
+          id: "sp-1",
+          type: "KOOKPLAAT",
+          bladId: "P1",
+          inbouwwijze: "VLAKBOUW",
+          productMerk: "Bora",
+          productModel: "C75",
+          positie: { x: 979, y: 400 },
+          breedte: 764,
+          hoogte: 519,
+          vlakbouw: { breedteOnder: 740, hoogteOnder: 495, radiusMm: 5, tredeMm: 7 },
+        },
+      ],
+    },
+    {
+      id: "P2",
+      label: "Bladdeel B (L-vorm)",
+      werkstukType: "Bladdeel B",
+      categorie: "WB",
+      lengte: 1958,
+      breedte: 800,
+      dikte: 20,
+      randen: [],
+      outline: [
+        { x: 0, y: 0 },
+        { x: 1200, y: 0 },
+        { x: 1200, y: 400 },
+        { x: 1958, y: 400 },
+        { x: 1958, y: 800 },
+        { x: 0, y: 800 },
+      ],
+      materiaalKeuze: {
+        soort: "DEKTON",
+        dikte_mm: 12,
+        kleur_code: "SIRIUS",
+        kleur_label: "Sirius",
+      },
+      randafwerkingen: [
+        { zijdeId: "0", code: "DV20", label: "DV20 – verstek 20mm", type: "VERSTEK", hoogte_mm: 20 },
+        { zijdeId: "1", code: "DV40", label: "DV40 – verstek 40mm", type: "VERSTEK", hoogte_mm: 40 },
+        { zijdeId: "2", code: "T1-EF", label: "T1 enkel facet", type: "FACET" },
+        { zijdeId: "3", code: "A1", label: "A1 facet blad", type: "FACET" },
+      ],
+    },
+  ],
+  accessoires: [
+    { id: "acc-1", sku: "AFDEK30", naam: "Afdekprofiel 30mm", aantal: 4 },
+    { id: "acc-2", sku: "LIJM-KARLDUR", naam: "Karldur lijm tube", aantal: 3 },
+    { id: "acc-3", naam: "Speciaal anker bovenkant", aantal: 2 },
+  ],
+} : _baseState;
 
 export type OpnameAction =
   | { type: "SET_VERKOPER"; payload: Opname["verkoper"] }
@@ -26,7 +104,14 @@ export type OpnameAction =
   | { type: "SPARING_BIJWERKEN"; bladId: string; id: string; patch: Partial<Sparing> }
   | { type: "BOORGAT_TOEVOEGEN"; bladId: string; boorgat: Boorgat }
   | { type: "BOORGAT_VERWIJDEREN"; bladId: string; id: string }
-  | { type: "BOORGAT_BIJWERKEN"; bladId: string; id: string; patch: Partial<Boorgat> };
+  | { type: "BOORGAT_BIJWERKEN"; bladId: string; id: string; patch: Partial<Boorgat> }
+  | { type: "MATERIAAL_INSTELLEN"; keuze: MateriaalKeuze }
+  | { type: "BLAD_MATERIAAL_OVERRIDE"; bladId: string; keuze: MateriaalKeuze | null }
+  | { type: "RANDAFWERKING_BIJWERKEN"; bladId: string; randafwerking: Randafwerking }
+  | { type: "RANDAFWERKING_VERWIJDEREN"; bladId: string; zijdeId: ZijdeId }
+  | { type: "ACCESSOIRE_TOEVOEGEN"; regel: AccessoireRegel }
+  | { type: "ACCESSOIRE_BIJWERKEN"; id: string; patch: Partial<AccessoireRegel> }
+  | { type: "ACCESSOIRE_VERWIJDEREN"; id: string };
 
 export function opnameReducer(state: Opname, action: OpnameAction): Opname {
   switch (action.type) {
@@ -248,5 +333,65 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
         }),
       };
     }
+
+    case "MATERIAAL_INSTELLEN":
+      return { ...state, materiaalKeuze: action.keuze };
+
+    case "BLAD_MATERIAAL_OVERRIDE":
+      return {
+        ...state,
+        bladen: state.bladen.map(b =>
+          b.id === action.bladId
+            ? { ...b, materiaalKeuze: action.keuze ?? undefined }
+            : b
+        ),
+      };
+
+    case "RANDAFWERKING_BIJWERKEN":
+      return {
+        ...state,
+        bladen: state.bladen.map(b => {
+          if (b.id !== action.bladId) return b;
+          const rest = (b.randafwerkingen ?? []).filter(r => r.zijdeId !== action.randafwerking.zijdeId);
+          return { ...b, randafwerkingen: [...rest, action.randafwerking] };
+        }),
+      };
+
+    case "RANDAFWERKING_VERWIJDEREN":
+      return {
+        ...state,
+        bladen: state.bladen.map(b =>
+          b.id === action.bladId
+            ? { ...b, randafwerkingen: (b.randafwerkingen ?? []).filter(r => r.zijdeId !== action.zijdeId) }
+            : b
+        ),
+      };
+
+    case "ACCESSOIRE_TOEVOEGEN": {
+      const { regel } = action;
+      if (regel.sku) {
+        const bestaande = state.accessoires.find(a => a.sku === regel.sku);
+        if (bestaande) {
+          return {
+            ...state,
+            accessoires: state.accessoires.map(a =>
+              a.id === bestaande.id ? { ...a, aantal: a.aantal + regel.aantal } : a
+            ),
+          };
+        }
+      }
+      return { ...state, accessoires: [...state.accessoires, regel] };
+    }
+
+    case "ACCESSOIRE_BIJWERKEN":
+      return {
+        ...state,
+        accessoires: state.accessoires.map(a =>
+          a.id === action.id ? { ...a, ...action.patch } : a
+        ),
+      };
+
+    case "ACCESSOIRE_VERWIJDEREN":
+      return { ...state, accessoires: state.accessoires.filter(a => a.id !== action.id) };
   }
 }

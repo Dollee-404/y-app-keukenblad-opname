@@ -174,3 +174,19 @@ Dat heeft drie consequenties:
 - Multi-language (alleen NL)
 - Niet-haakse blad-vormen (alleen rechthoeken + L-vorm + uithap)
 - Schuine sparing-randen
+
+## Sprint 7+ (na PDF-generatie)
+
+- **Catalogus-browser als aparte pagina** — referentie-tool waar de
+  inmeter materialen, kleuren, producten kan bekijken zonder lopende
+  opname. Stand-alone bruikbaar (bv. tijdens klantadvies). Aparte route
+  binnen extensie. Mogelijk gekoppeld aan sprint 4 data zodat producten
+  daar consistent zijn.
+
+## Sprint 7+ data-verrijking (kan parallel aan andere sprints)
+
+- **Hex-waarden voor materiaalkleuren** — verzamel hex-waarden voor
+  de 561 kleuren in seed-data, beginnend met de meest voorkomende
+  per leverancier. Bron: leverancier-websites (Quartzforms, Dekton,
+  Caesarstone, etc.). Na verzameling: kleurstalen activeren in
+  MateriaalSectie UI.

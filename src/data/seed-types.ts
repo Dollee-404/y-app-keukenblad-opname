@@ -32,6 +32,8 @@ export type SeedData = {
   producten_kookplaten: KookplaatProduct[];
   producten_spoelbakken: SpoelbakProduct[];
   accessoires: AccessoireType[];
+  randafwerking_codes: RandafwerkingDef[];
+  accessoires_catalogus: AccessoireCatalogusItem[];
   kleuren_accessoires: string[];
   etages: string[];
   mlp_statussen: MLPStatus[];
@@ -256,6 +258,7 @@ export type Opname = {
     kleur: string;                       // type/kleur uit materialen[soort].kleuren
     bijzonderheden?: string;
   };
+  materiaalKeuze?: MateriaalKeuze; // sprint-4 project-level materiaal (structured form)
 
   // BLADEN
   bladen: Blad[];
@@ -264,7 +267,7 @@ export type Opname = {
   sparingen: Sparing[];
 
   // ACCESSOIRES
-  accessoires: Accessoire[];
+  accessoires: AccessoireRegel[];
 
   // SERVICES
   meting: ServiceStap;
@@ -304,6 +307,8 @@ export type Blad = {
 
   // optionele override van materiaal-eigenschappen
   materiaalOverride?: Partial<Opname['materiaal']>;
+  materiaalKeuze?: MateriaalKeuze;     // sprint-4 per-blad materiaal override
+  randafwerkingen?: Randafwerking[];   // sprint-4 per-zijde randafwerking
 
   // geometrie (alleen invullen als niet-rechthoekig)
   outline?: Point[];                      // polygoon in lokale mm-coords (0,0 = linksonder)
@@ -331,6 +336,50 @@ export type Rand = {
   lengteMm?: number;                      // afgeleid uit blad-afmetingen
   inVerstekMet?: string;                  // id van aansluitend blad
   notitie?: string;                       // "Schuine zijde", "Koppelnaad", "IN VERSTEK MET ACHTERWAND"
+};
+
+// Sprint 4 additions
+export type MateriaalKeuze = {
+  soort: MateriaalCode;
+  dikte_mm: number;
+  kleur_code: string;
+  kleur_label: string;
+  leverancier?: string;
+};
+
+export type ZijdeId = string;
+
+export type RandafwerkingType = 'GEEN' | 'FACET' | 'VERSTEK';
+
+export type Randafwerking = {
+  zijdeId: ZijdeId;
+  code: string;
+  label: string;
+  type: RandafwerkingType;
+  hoogte_mm?: number;
+};
+
+export type AccessoireRegel = {
+  id: string;
+  sku?: string;
+  naam: string;
+  aantal: number;
+  kleur_code?: string;
+  notitie?: string;
+};
+
+export type RandafwerkingDef = {
+  code: string;
+  label: string;
+  type: RandafwerkingType;
+  hoogte_mm?: number;
+};
+
+export type AccessoireCatalogusItem = {
+  sku: string;
+  naam: string;
+  eenheid: string;
+  default_aantal: number;
 };
 
 export type Sparing = {

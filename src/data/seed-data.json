@@ -1020,6 +1020,26 @@
       "default_diameter_mm": null
     }
   ],
+  "randafwerking_codes": [
+    { "code": "recht",   "label": "Recht (geen bewerking)",  "type": "GEEN" },
+    { "code": "T1-EF",   "label": "T1 enkel facet",          "type": "FACET" },
+    { "code": "A1",      "label": "A1 facet blad",            "type": "FACET" },
+    { "code": "KF",      "label": "Klein facet",              "type": "FACET" },
+    { "code": "DV20",    "label": "DV20 – verstek 20mm",      "type": "VERSTEK", "hoogte_mm": 20 },
+    { "code": "DV40",    "label": "DV40 – verstek 40mm",      "type": "VERSTEK", "hoogte_mm": 40 },
+    { "code": "DV60",    "label": "DV60 – verstek 60mm",      "type": "VERSTEK", "hoogte_mm": 60 },
+    { "code": "DV80",    "label": "DV80 – verstek 80mm",      "type": "VERSTEK", "hoogte_mm": 80 },
+    { "code": "DV100",   "label": "DV100 – verstek 100mm",    "type": "VERSTEK", "hoogte_mm": 100 },
+    { "code": "DV120",   "label": "DV120 – verstek 120mm",    "type": "VERSTEK", "hoogte_mm": 120 }
+  ],
+  "accessoires_catalogus": [
+    { "sku": "AFDEK30",      "naam": "Afdekprofiel 30mm",          "eenheid": "stuk",  "default_aantal": 1 },
+    { "sku": "AFDEK40",      "naam": "Afdekprofiel 40mm",          "eenheid": "stuk",  "default_aantal": 1 },
+    { "sku": "EINDKAP-L",    "naam": "Eindkap links",               "eenheid": "stuk",  "default_aantal": 1 },
+    { "sku": "EINDKAP-R",    "naam": "Eindkap rechts",              "eenheid": "stuk",  "default_aantal": 1 },
+    { "sku": "LIJM-KARLDUR", "naam": "Karldur lijm tube",           "eenheid": "tube",  "default_aantal": 1 },
+    { "sku": "SCHROEFSET",   "naam": "Bevestigingsschroeven (set)", "eenheid": "set",   "default_aantal": 1 }
+  ],
   "inbouwwijzen": [
     {
       "code": "VLAKBOUW",

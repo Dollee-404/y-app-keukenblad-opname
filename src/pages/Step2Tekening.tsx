@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import type { Opname, Sparing, Boorgat } from "../data/seed-types";
 import type { OpnameAction } from "../state/opnameReducer";
+import { effectiefMateriaalSoort } from "../state/helpers";
 import BladList from "./step2/BladList";
 import NieuwBladDialog from "./step2/NieuwBladDialog";
 import Canvas from "./step2/Canvas";
@@ -271,7 +272,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
               selectedSegmentIndex={actieveSegment}
               activeSparingId={activeSparingId}
               activeBoorgatId={activeBoorgatId}
-              materiaalSoort={geselecteerdBlad.materiaalOverride?.soort ?? state.materiaal?.soort}
+              materiaalSoort={effectiefMateriaalSoort(geselecteerdBlad, state)}
               vp={vp}
               onVpChange={setVp}
               onFitRef={fitRef}

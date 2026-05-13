@@ -3,11 +3,12 @@ import { opnameReducer, initialState } from "./state/opnameReducer";
 import TopBar from "./components/TopBar";
 import Step1Klant from "./pages/Step1Klant";
 import Step2Tekening from "./pages/Step2Tekening";
+import Step3Specs from "./pages/step3/Step3Specs";
 
 export default function App() {
   const [state, dispatch] = useReducer(opnameReducer, initialState);
   const [debugOpen, setDebugOpen] = useState(false);
-  const [huidigStap, setHuidigStap] = useState<number>(1);
+  const [huidigStap, setHuidigStap] = useState<number>(import.meta.env.DEV ? 3 : 1);
 
   return (
     <div className="h-full flex flex-col bg-slate-50">
@@ -49,8 +50,8 @@ export default function App() {
       )}
 
       {huidigStap === 3 && (
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center text-slate-400 py-16">Specificaties — volgt in sprint 4</div>
+        <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <Step3Specs state={state} dispatch={dispatch} />
         </main>
       )}
 
