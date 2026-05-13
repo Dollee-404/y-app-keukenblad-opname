@@ -489,28 +489,37 @@ export default function Canvas({
     return lijnen;
   }
 
-  // Compute vertical label offsets for boorgaten whose labels would otherwise overlap.
-  // Label starts at positie.x + radius — if two boorgaten are within CLUSTER_THRESHOLD mm
-  // horizontally, stack their labels vertically by assigning sequential slots.
+  // Compute vertical label offsets for clustered boorgaten.
+  // Measured empirically: rendered SVG text bounding box height ≈ fontSizeMm * 1.37.
+  // Step of 2.0× fontSizeMm gives a gap of ~0.63× fontSizeMm (≥6px at typical zoom).
+  // Slots alternate above/below the circle so labels never run off the blad edge.
   const boorgatLabelOffsets = (() => {
-    const boorgaten = blad.boorgaten ?? [];
+    const bgs = blad.boorgaten ?? [];
+    const slotMap = new Map<string, number>();
     const offsets = new Map<string, number>();
-    const sorted = [...boorgaten].sort((a, b) => a.positie.x - b.positie.x || a.id.localeCompare(b.id));
-    const CLUSTER_THRESHOLD = fontSizeMm * 3;
+    const CLUSTER_MM = 200;
+    const STEP_MM = fontSizeMm * 2.0;
+
+    // slot 0 → 0, slot 1 → +STEP, slot 2 → −STEP, slot 3 → +2×STEP, slot 4 → −2×STEP …
+    function slotToOffset(s: number): number {
+      if (s === 0) return 0;
+      const level = Math.ceil(s / 2);
+      return (s % 2 === 1 ? 1 : -1) * level * STEP_MM;
+    }
+
+    const sorted = [...bgs].sort((a, b) => a.positie.x - b.positie.x || a.id.localeCompare(b.id));
     for (let i = 0; i < sorted.length; i++) {
-      const myLabelX = sorted[i].positie.x + sorted[i].diameter / 2;
-      let slot = 0;
-      for (;;) {
-        const slotOffset = slot * fontSizeMm * 1.35;
-        const taken = sorted.slice(0, i).some(
-          prev =>
-            Math.abs(prev.positie.x + prev.diameter / 2 - myLabelX) < CLUSTER_THRESHOLD &&
-            offsets.get(prev.id) === slotOffset,
-        );
-        if (!taken) break;
-        slot++;
+      const myX = sorted[i].positie.x + sorted[i].diameter / 2;
+      const taken = new Set<number>();
+      for (let j = 0; j < i; j++) {
+        if (Math.abs((sorted[j].positie.x + sorted[j].diameter / 2) - myX) < CLUSTER_MM) {
+          taken.add(slotMap.get(sorted[j].id)!);
+        }
       }
-      offsets.set(sorted[i].id, slot * fontSizeMm * 1.35);
+      let s = 0;
+      while (taken.has(s)) s++;
+      slotMap.set(sorted[i].id, s);
+      offsets.set(sorted[i].id, slotToOffset(s));
     }
     return offsets;
   })();
