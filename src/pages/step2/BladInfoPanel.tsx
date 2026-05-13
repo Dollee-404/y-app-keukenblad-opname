@@ -3,6 +3,7 @@ import type { SeedData, Blad, Opname } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import { rechthoekOutline, segmentLengtes } from "../../drawing/bladHelpers";
 import { randAfstand } from "../../drawing/boorgatHelpers";
+import { effectiefMateriaalSoort } from "../../state/helpers";
 
 const seed = seedRaw as unknown as SeedData;
 
@@ -27,7 +28,7 @@ function omtrekMm(blad: Blad): number {
 }
 
 export default function BladInfoPanel({ blad, state, onBoorgatToevoegen }: Props) {
-  const matSoort = blad?.materiaalOverride?.soort ?? state.materiaal?.soort ?? "—";
+  const matSoort = blad ? effectiefMateriaalSoort(blad, state) : "—";
   const dikte = blad?.dikte ?? "—";
   const kleur = blad?.materiaalOverride?.kleur ?? state.materiaal?.kleur ?? "—";
 
@@ -100,7 +101,7 @@ export default function BladInfoPanel({ blad, state, onBoorgatToevoegen }: Props
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
             {blad.sparingen.map(s => {
               const isComposiet = ["COMPOSIET", "KWARTSCOMPOSIET"].includes(
-                blad.materiaalOverride?.soort ?? state.materiaal?.soort ?? ""
+                effectiefMateriaalSoort(blad, state)
               );
               const toonRisicoIcon = isComposiet && s.type === "KOOKPLAAT" && s.inbouwwijze === "VLAKBOUW";
               return (
