@@ -322,7 +322,7 @@ export default function Canvas({
     );
   }
 
-  function renderBoorgat(bg: Boorgat, labelYShift: number) {
+  function renderBoorgat(bg: Boorgat) {
     const r = bg.diameter / 2;
     const bgY = fy(bg.positie.y);
     const tapR = r + Math.max(10, 14 / vp.scale);
@@ -330,6 +330,7 @@ export default function Canvas({
     const kleur = actief ? "#4338ca" : "#6B4FB8";
     const dasharray = bg.doorboring ? undefined : `${fontSizeMm * 0.4} ${fontSizeMm * 0.25}`;
     const { risico } = randAfstand(bg.positie, bg.diameter, blad);
+    const centerFontSize = Math.min(r * 0.8, fontSizeMm * 0.6);
     return (
       <g
         key={bg.id}
@@ -350,21 +351,21 @@ export default function Canvas({
           strokeDasharray={dasharray}
           style={{ pointerEvents: "none" }}
         />
-        <text
-          x={bg.positie.x + r + fontSizeMm * 0.35} y={bgY + labelYShift}
-          textAnchor="start" dominantBaseline="middle"
-          fontSize={fontSizeMm * 0.75} fill={kleur}
-          stroke="white" strokeWidth={fontSizeMm * 0.2} paintOrder="stroke"
-          fontFamily="system-ui, sans-serif"
-          style={{ pointerEvents: "none" }}
-        >
-          Ø{bg.diameter}
-        </text>
+        {bg.diameter >= 25 && (
+          <text
+            x={bg.positie.x} y={bgY}
+            textAnchor="middle" dominantBaseline="middle"
+            fontSize={centerFontSize} fill={kleur} fillOpacity={0.65}
+            fontFamily="system-ui, sans-serif"
+            style={{ pointerEvents: "none", userSelect: "none" }}
+          >
+            {bg.diameter}
+          </text>
+        )}
         {bg.notitie && (
           <text
-            x={bg.positie.x + r + fontSizeMm * 0.35}
-            y={bgY + fontSizeMm * 0.9 + labelYShift}
-            fontSize={fontSizeMm * 0.8} textAnchor="start" dominantBaseline="middle"
+            x={bg.positie.x + r * 0.7} y={bgY - r * 0.7}
+            fontSize={fontSizeMm * 0.7} textAnchor="start" dominantBaseline="middle"
             style={{ pointerEvents: "none", userSelect: "none" }}
           >
             <title>{bg.notitie}</title>
@@ -489,39 +490,99 @@ export default function Canvas({
     return lijnen;
   }
 
-  // Compute vertical label offsets for clustered boorgaten.
-  // Measured empirically: rendered SVG text bounding box height ≈ fontSizeMm * 1.37.
-  // Step of 2.0× fontSizeMm gives a gap of ~0.63× fontSizeMm (≥6px at typical zoom).
-  // Slots alternate above/below the circle so labels never run off the blad edge.
-  const boorgatLabelOffsets = (() => {
-    const bgs = blad.boorgaten ?? [];
-    const slotMap = new Map<string, number>();
-    const offsets = new Map<string, number>();
-    const CLUSTER_MM = 200;
-    const STEP_MM = fontSizeMm * 2.0;
+  function renderBoorgatLabels() {
+    const labelFontSize = fontSizeMm * 0.85;
+    return boorgatLabels.map((label, idx) => {
+      const labelY = label.zone === 'BOVEN'
+        ? -(DIM_OFFSET + fontSizeMm * 1.8)
+        : blad.breedte + DIM_OFFSET + fontSizeMm * 1.8;
+      const leaderStartY = label.zone === 'BOVEN'
+        ? labelY + labelFontSize * 0.6
+        : labelY - labelFontSize * 0.6;
+      const leaderEndY = label.zone === 'BOVEN'
+        ? label.leaderEndY - fontSizeMm * 0.4
+        : label.leaderEndY + fontSizeMm * 0.4;
+      return (
+        <g key={`bg-label-${idx}`} style={{ pointerEvents: "none" }}>
+          <line
+            x1={label.labelX} y1={leaderStartY}
+            x2={label.groupCenterX} y2={leaderEndY}
+            stroke="#B4B2A9" strokeWidth={strokeW * 0.5}
+            strokeDasharray={`${fontSizeMm * 0.15} ${fontSizeMm * 0.15}`}
+          />
+          <text
+            x={label.labelX} y={labelY}
+            textAnchor="middle" dominantBaseline="middle"
+            fontSize={labelFontSize}
+            fill="#444441"
+            fontFamily="system-ui, sans-serif"
+          >
+            {label.text}
+          </text>
+        </g>
+      );
+    });
+  }
 
-    // slot 0 → 0, slot 1 → +STEP, slot 2 → −STEP, slot 3 → +2×STEP, slot 4 → −2×STEP …
-    function slotToOffset(s: number): number {
-      if (s === 0) return 0;
-      const level = Math.ceil(s / 2);
-      return (s % 2 === 1 ? 1 : -1) * level * STEP_MM;
+  // Grouped label placement: outside blad-outline, with leader lines.
+  // Boorgaten within 100mm horizontal → one cluster → one combined label.
+  // Zone BOVEN when physical Y >= breedte/2, else ONDER.
+  // Labels spread to min 80mm apart within each zone.
+  type BoorgatLabelInfo = {
+    text: string;
+    labelX: number;
+    zone: 'BOVEN' | 'ONDER';
+    groupCenterX: number;
+    leaderEndY: number;
+  };
+
+  const boorgatLabels: BoorgatLabelInfo[] = (() => {
+    const bgs = blad.boorgaten ?? [];
+    if (bgs.length === 0) return [];
+
+    const sorted = [...bgs].sort((a, b) => a.positie.x - b.positie.x);
+
+    const clusters: Boorgat[][] = [];
+    for (const bg of sorted) {
+      const last = clusters[clusters.length - 1];
+      const lastMember = last?.[last.length - 1];
+      if (lastMember && Math.abs(lastMember.positie.x - bg.positie.x) <= 100) {
+        last.push(bg);
+      } else {
+        clusters.push([bg]);
+      }
     }
 
-    const sorted = [...bgs].sort((a, b) => a.positie.x - b.positie.x || a.id.localeCompare(b.id));
-    for (let i = 0; i < sorted.length; i++) {
-      const myX = sorted[i].positie.x + sorted[i].diameter / 2;
-      const taken = new Set<number>();
-      for (let j = 0; j < i; j++) {
-        if (Math.abs((sorted[j].positie.x + sorted[j].diameter / 2) - myX) < CLUSTER_MM) {
-          taken.add(slotMap.get(sorted[j].id)!);
+    const labels: BoorgatLabelInfo[] = clusters.map(group => {
+      const centerX = group.reduce((s, b) => s + b.positie.x, 0) / group.length;
+      const avgPhysY = group.reduce((s, b) => s + b.positie.y, 0) / group.length;
+      const zone: 'BOVEN' | 'ONDER' = avgPhysY >= blad.breedte / 2 ? 'BOVEN' : 'ONDER';
+
+      const byDiam = new Map<number, number>();
+      for (const bg of group) byDiam.set(bg.diameter, (byDiam.get(bg.diameter) ?? 0) + 1);
+      const text = Array.from(byDiam.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([d, n]) => n === 1 ? `Ø${d}` : `${n}× Ø${d}`)
+        .join(' + ');
+
+      const leaderEndY = zone === 'BOVEN'
+        ? Math.min(...group.map(bg => fy(bg.positie.y) - bg.diameter / 2))
+        : Math.max(...group.map(bg => fy(bg.positie.y) + bg.diameter / 2));
+
+      return { text, labelX: centerX, zone, groupCenterX: centerX, leaderEndY };
+    });
+
+    const MIN_GAP = 80;
+    for (const zone of ['BOVEN', 'ONDER'] as const) {
+      const zl = labels.filter(l => l.zone === zone).sort((a, b) => a.labelX - b.labelX);
+      for (let i = 1; i < zl.length; i++) {
+        if (zl[i].labelX - zl[i - 1].labelX < MIN_GAP) {
+          zl[i].labelX = zl[i - 1].labelX + MIN_GAP;
         }
       }
-      let s = 0;
-      while (taken.has(s)) s++;
-      slotMap.set(sorted[i].id, s);
-      offsets.set(sorted[i].id, slotToOffset(s));
     }
-    return offsets;
+
+    return labels;
   })();
 
   const transform = `translate(${vp.x} ${vp.y}) scale(${vp.scale})`;
@@ -622,7 +683,10 @@ export default function Canvas({
         {renderBoorgatGroepLijnen()}
 
         {/* Boorgaten */}
-        {(blad.boorgaten ?? []).map(bg => renderBoorgat(bg, boorgatLabelOffsets.get(bg.id) ?? 0))}
+        {(blad.boorgaten ?? []).map(bg => renderBoorgat(bg))}
+
+        {/* Boorgat-labels buiten blad-outline, met leader-lijnen */}
+        {renderBoorgatLabels()}
 
         {/* m² watermerk — verborgen zodra er sparingen of boorgaten zijn */}
         {!blad.sparingen?.length && !blad.boorgaten?.length && (
