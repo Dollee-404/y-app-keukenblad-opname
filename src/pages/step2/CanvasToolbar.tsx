@@ -8,6 +8,7 @@ interface Props {
   onZoomOut: () => void;
   onFitScreen: () => void;
   onSparingToevoegen: () => void;
+  onBoorgatToevoegen: () => void;
   onDrawerOpen?: () => void;
 }
 
@@ -23,6 +24,7 @@ export default function CanvasToolbar({
   onZoomOut,
   onFitScreen,
   onSparingToevoegen,
+  onBoorgatToevoegen,
   onDrawerOpen,
 }: Props) {
   const matSoort = blad?.materiaalOverride?.soort ?? state.materiaal?.soort ?? "";
@@ -119,6 +121,25 @@ export default function CanvasToolbar({
           }}
         >
           + Sparing
+        </button>
+        <button
+          onClick={onBoorgatToevoegen}
+          disabled={!blad}
+          title="Boorgat toevoegen"
+          style={{
+            padding: "4px 10px",
+            border: "0.5px solid #6B4FB8",
+            borderRadius: 4,
+            background: blad ? "#f5f3ff" : "white",
+            color: blad ? "#6B4FB8" : "#94a3b8",
+            cursor: blad ? "pointer" : "not-allowed",
+            fontSize: 12,
+            fontWeight: 500,
+            lineHeight: 1.4,
+            opacity: blad ? 1 : 0.4,
+          }}
+        >
+          + Boorgat
         </button>
         <div style={{ width: "0.5px", height: 16, background: "#cbd5e1", margin: "0 2px" }} />
         {iconBtn("Zoom in", onZoomIn, !blad)}

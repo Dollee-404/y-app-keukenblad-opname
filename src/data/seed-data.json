@@ -991,7 +991,7 @@
     },
     {
       "code": "ELEKTRA",
-      "label": "Elektra",
+      "label": "Stopcontact",
       "default_diameter_mm": 70
     },
     {
@@ -1008,6 +1008,11 @@
       "code": "DOWNDRAFT",
       "label": "Downdraft",
       "default_diameter_mm": null
+    },
+    {
+      "code": "DOORVOER",
+      "label": "Leiding-doorvoer",
+      "default_diameter_mm": 70
     },
     {
       "code": "OVERIG",
@@ -1043,8 +1048,14 @@
       "merk": "Bora",
       "model": "C75",
       "inbouwwijze": "VLAKBOUW",
-      "sparing_boven_mm": [764, 519],
-      "sparing_onder_mm": [740, 495],
+      "sparing_boven_mm": [
+        764,
+        519
+      ],
+      "sparing_onder_mm": [
+        740,
+        495
+      ],
       "radius_mm": 5,
       "trede_mm": 7,
       "opmerking": "Vlakbouw — zie waarschuwing"
@@ -1053,8 +1064,14 @@
       "merk": "Bora",
       "model": "Pure 60",
       "inbouwwijze": "VLAKBOUW",
-      "sparing_boven_mm": [548, 480],
-      "sparing_onder_mm": [524, 456],
+      "sparing_boven_mm": [
+        548,
+        480
+      ],
+      "sparing_onder_mm": [
+        524,
+        456
+      ],
       "radius_mm": 5,
       "trede_mm": 7,
       "opmerking": "(specs onbevestigd) Compact vlakbouw recirculatie"
@@ -1063,8 +1080,14 @@
       "merk": "Pitt Cooking",
       "model": "4-pits standaard",
       "inbouwwijze": "VLAKBOUW",
-      "sparing_boven_mm": [590, 510],
-      "sparing_onder_mm": [566, 486],
+      "sparing_boven_mm": [
+        590,
+        510
+      ],
+      "sparing_onder_mm": [
+        566,
+        486
+      ],
       "radius_mm": 5,
       "trede_mm": 7,
       "opmerking": "(specs onbevestigd) Standaard 4-pits configuratie"
@@ -1073,8 +1096,14 @@
       "merk": "AEG",
       "model": "IKE85751FB",
       "inbouwwijze": "VLAKBOUW",
-      "sparing_boven_mm": [780, 520],
-      "sparing_onder_mm": [756, 496],
+      "sparing_boven_mm": [
+        780,
+        520
+      ],
+      "sparing_onder_mm": [
+        756,
+        496
+      ],
       "radius_mm": 5,
       "trede_mm": 7,
       "opmerking": "(specs onbevestigd)"
@@ -1083,8 +1112,14 @@
       "merk": "Siemens",
       "model": "EX875LX67E",
       "inbouwwijze": "VLAKBOUW",
-      "sparing_boven_mm": [800, 520],
-      "sparing_onder_mm": [776, 496],
+      "sparing_boven_mm": [
+        800,
+        520
+      ],
+      "sparing_onder_mm": [
+        776,
+        496
+      ],
       "radius_mm": 5,
       "trede_mm": 7,
       "opmerking": "(specs onbevestigd)"
@@ -1093,8 +1128,14 @@
       "merk": "Atag",
       "model": "HI8271EV",
       "inbouwwijze": "ONDERBOUW",
-      "sparing_boven_mm": [780, 510],
-      "sparing_onder_mm": [780, 510],
+      "sparing_boven_mm": [
+        780,
+        510
+      ],
+      "sparing_onder_mm": [
+        780,
+        510
+      ],
       "radius_mm": 10,
       "trede_mm": 0,
       "opmerking": "(specs onbevestigd) Onderbouw — geen trede"
@@ -1105,8 +1146,14 @@
       "merk": "Caressi",
       "model": "CAPP50R10 C60",
       "inbouwwijze": "VLAKBOUW",
-      "sparing_boven_mm": [540, 440],
-      "sparing_onder_mm": [516, 416],
+      "sparing_boven_mm": [
+        540,
+        440
+      ],
+      "sparing_onder_mm": [
+        516,
+        416
+      ],
       "radius_mm": 10,
       "trede_mm": 6,
       "opmerking": "(specs onbevestigd) Vlakbouw spoelbak"
@@ -1115,8 +1162,14 @@
       "merk": "Caressi",
       "model": "CA40R10",
       "inbouwwijze": "ONDERBOUW",
-      "sparing_boven_mm": [440, 440],
-      "sparing_onder_mm": [440, 440],
+      "sparing_boven_mm": [
+        440,
+        440
+      ],
+      "sparing_onder_mm": [
+        440,
+        440
+      ],
       "radius_mm": 10,
       "trede_mm": 0,
       "opmerking": "(specs onbevestigd) Onderbouw"
@@ -1125,8 +1178,14 @@
       "merk": "Reginox",
       "model": "Ohio 60",
       "inbouwwijze": "ONDERBOUW",
-      "sparing_boven_mm": [560, 460],
-      "sparing_onder_mm": [560, 460],
+      "sparing_boven_mm": [
+        560,
+        460
+      ],
+      "sparing_onder_mm": [
+        560,
+        460
+      ],
       "radius_mm": 10,
       "trede_mm": 0,
       "opmerking": "(specs onbevestigd) Onderbouw"
@@ -1135,8 +1194,14 @@
       "merk": "Franke",
       "model": "MRG 610-58",
       "inbouwwijze": "OPBOUW",
-      "sparing_boven_mm": [560, 480],
-      "sparing_onder_mm": [560, 480],
+      "sparing_boven_mm": [
+        560,
+        480
+      ],
+      "sparing_onder_mm": [
+        560,
+        480
+      ],
       "radius_mm": 15,
       "trede_mm": 0,
       "opmerking": "(specs onbevestigd) Opbouw"
@@ -1145,8 +1210,14 @@
       "merk": "Generiek",
       "model": "50SP",
       "inbouwwijze": "ONDERBOUW",
-      "sparing_boven_mm": [500, 400],
-      "sparing_onder_mm": [500, 400],
+      "sparing_boven_mm": [
+        500,
+        400
+      ],
+      "sparing_onder_mm": [
+        500,
+        400
+      ],
       "radius_mm": 10,
       "trede_mm": 0,
       "opmerking": "Default onderbouwbak als product onbekend is"

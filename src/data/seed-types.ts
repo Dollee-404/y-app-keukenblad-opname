@@ -80,7 +80,7 @@ export type WerkstukCategorieCode = 'WB' | 'RW' | 'VB' | 'PL' | 'ST' | 'OV';
 
 export type SparingTypeCode = 'BOORGAT' | 'SPOELBAK' | 'KOOKPLAAT' | 'KOOF' | 'KOLOM' | 'HOEK';
 
-export type BoorgatDoelCode = 'KRAAN' | 'QUOOKER' | 'ELEKTRA' | 'DUBBELE_WCD' | 'ZEEPPOMP' | 'DOWNDRAFT' | 'OVERIG';
+export type BoorgatDoelCode = 'KRAAN' | 'QUOOKER' | 'ELEKTRA' | 'DUBBELE_WCD' | 'ZEEPPOMP' | 'DOWNDRAFT' | 'DOORVOER' | 'OVERIG';
 
 export type InbouwwijzeCode = 'VLAKBOUW' | 'ONDERBOUW' | 'OPBOUW' | 'NIS' | 'VERSTEK';
 
@@ -153,6 +153,33 @@ export type BoorgatDoel = {
   code: BoorgatDoelCode;
   label: string;
   default_diameter_mm: number | null;
+};
+
+export type MaatReferentie =
+  | { type: 'LINKSONDER' }
+  | { type: 'LINKERRAND'; offsetVanaf: 'onder' | 'boven' }
+  | { type: 'RECHTERRAND'; offsetVanaf: 'onder' | 'boven' }
+  | { type: 'MIDDEN_BLAD' }
+  | { type: 'VORIGE_SPARING'; sparingId: string }
+  | { type: 'VORIG_BOORGAT'; boorgatId: string };
+
+export type Boorgat = {
+  id: string;
+  bladId: string;
+  doel: BoorgatDoelCode;
+  diameter: number;
+  doorboring: boolean;
+  positie: Point;
+  referentie?: MaatReferentie;
+  groepId?: string;
+  groepVolgnummer?: number;
+  notitie?: string;
+  gekoppeldAan?: {
+    type: 'SPOELBAK' | 'KOOKPLAAT';
+    sparingId: string;
+    offsetX: number;
+    offsetY: number;
+  };
 };
 
 export type InbouwwijzeDef = {
@@ -288,6 +315,9 @@ export type Blad = {
   // sparingen op dit blad (kookplaat, spoelbak, vrije rechthoek)
   sparingen?: Sparing[];
 
+  // boorgaten op dit blad (kraan, elektra, etc.)
+  boorgaten?: Boorgat[];
+
   // L-vorm hoekuitsparingen
   hoekuitsparingen?: Rect[];
 
@@ -331,11 +361,7 @@ export type Sparing = {
   // hoekafronding (niet-vlakbouw)
   radiusMm?: number;
 
-  // boorgat-specifiek (deel 2)
-  diameter?: number;
-  boorgatDoel?: BoorgatDoelCode;
-  aantal?: number;
-
+  referentie?: MaatReferentie;
   notitie?: string;
 };
 

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from "react";
-import type { Blad, Point, Sparing } from "../../data/seed-types";
+import type { Blad, Point, Sparing, Boorgat } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import {
   rechthoekOutline,
@@ -9,6 +9,7 @@ import {
   segmentMidden,
 } from "../../drawing/bladHelpers";
 import { sparingPath } from "../../drawing/sparingHelpers";
+import { randAfstand } from "../../drawing/boorgatHelpers";
 
 interface Viewport { x: number; y: number; scale: number }
 
@@ -16,6 +17,7 @@ interface Props {
   blad: Blad;
   selectedSegmentIndex: number | null;
   activeSparingId?: string | null;
+  activeBoorgatId?: string | null;
   materiaalSoort?: string;
   vp: Viewport;
   onVpChange: (vp: Viewport | ((prev: Viewport) => Viewport)) => void;
@@ -23,6 +25,7 @@ interface Props {
   onSegmentTap: (segmentIndex: number) => void;
   onHoekTap: (cornerIndex: number) => void;
   onSparingTap?: (id: string) => void;
+  onBoorgatTap?: (id: string) => void;
 }
 
 const DIM_OFFSET = 50;
@@ -46,6 +49,7 @@ export default function Canvas({
   blad,
   selectedSegmentIndex,
   activeSparingId,
+  activeBoorgatId,
   materiaalSoort,
   vp,
   onVpChange,
@@ -53,6 +57,7 @@ export default function Canvas({
   onSegmentTap,
   onHoekTap,
   onSparingTap,
+  onBoorgatTap,
 }: Props) {
   const isComposiet = COMPOSIET_SOORTEN.has(materiaalSoort ?? "");
   const svgRef = useRef<SVGSVGElement>(null);
@@ -60,6 +65,9 @@ export default function Canvas({
   const outline = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
   const lengtes = segmentLengtes(outline);
   const bb = boundingBox(outline);
+
+  // SVG Y=0 is at top; datamodel Y=0 is at physical bottom — flip for rendering.
+  const fy = (y: number) => blad.breedte - y;
 
   function computeFit(w: number, h: number): Viewport {
     const margin = DIM_OFFSET * 2 + 20;
@@ -199,6 +207,8 @@ export default function Canvas({
 
     const lengte = Math.round(lengtes[i]);
     const textAngle = Math.atan2(q.y - p.y, q.x - p.x) * (180 / Math.PI);
+    // Normalize so text is never upside-down (bottom edge has angle=180°)
+    const displayAngle = textAngle > 90 || textAngle < -90 ? textAngle + 180 : textAngle;
     const isActief = i === selectedSegmentIndex;
 
     const lineColor = isActief ? "#0d9488" : "#475569";
@@ -222,7 +232,7 @@ export default function Canvas({
               height={fontSizeMm * 1.5}
               fill={textBg}
               rx={fontSizeMm * 0.3}
-              transform={`rotate(${textAngle} ${mx} ${my})`}
+              transform={`rotate(${displayAngle} ${mx} ${my})`}
             />
           );
         })()}
@@ -237,7 +247,7 @@ export default function Canvas({
           paintOrder="stroke"
           fontSize={fontSizeMm}
           fontFamily="system-ui, sans-serif"
-          transform={`rotate(${textAngle} ${mx} ${my})`}
+          transform={`rotate(${displayAngle} ${mx} ${my})`}
         >
           {lengte}
         </text>
@@ -312,6 +322,269 @@ export default function Canvas({
     );
   }
 
+  function renderBoorgat(bg: Boorgat) {
+    const r = bg.diameter / 2;
+    const bgY = fy(bg.positie.y);
+    const tapR = r + Math.max(10, 14 / vp.scale);
+    const actief = bg.id === activeBoorgatId;
+    const kleur = actief ? "#4338ca" : "#6B4FB8";
+    const dasharray = bg.doorboring ? undefined : `${fontSizeMm * 0.4} ${fontSizeMm * 0.25}`;
+    const { risico } = randAfstand(bg.positie, bg.diameter, blad);
+    const centerFontSize = Math.min(r * 0.8, fontSizeMm * 0.6);
+    return (
+      <g
+        key={bg.id}
+        style={{ cursor: onBoorgatTap ? "pointer" : "default" }}
+        onPointerDown={(e) => { e.stopPropagation(); onBoorgatTap?.(bg.id); }}
+      >
+        <circle cx={bg.positie.x} cy={bgY} r={tapR} fill="transparent" stroke="none" />
+        {actief && (
+          <circle
+            cx={bg.positie.x} cy={bgY} r={r + strokeW * 4}
+            fill={kleur} fillOpacity={0.12} stroke="none"
+            style={{ pointerEvents: "none" }}
+          />
+        )}
+        <circle
+          cx={bg.positie.x} cy={bgY} r={r}
+          fill="none" stroke={kleur} strokeWidth={strokeW * 1.5}
+          strokeDasharray={dasharray}
+          style={{ pointerEvents: "none" }}
+        />
+        {bg.diameter >= 25 && (
+          <text
+            x={bg.positie.x} y={bgY}
+            textAnchor="middle" dominantBaseline="middle"
+            fontSize={centerFontSize} fill={kleur} fillOpacity={0.65}
+            fontFamily="system-ui, sans-serif"
+            style={{ pointerEvents: "none", userSelect: "none" }}
+          >
+            {bg.diameter}
+          </text>
+        )}
+        {bg.notitie && (
+          <text
+            x={bg.positie.x + r * 0.7} y={bgY - r * 0.7}
+            fontSize={fontSizeMm * 0.7} textAnchor="start" dominantBaseline="middle"
+            style={{ pointerEvents: "none", userSelect: "none" }}
+          >
+            <title>{bg.notitie}</title>
+            ✏
+          </text>
+        )}
+        {risico && (
+          <text
+            x={bg.positie.x - r - fontSizeMm * 0.1}
+            y={bgY - r}
+            fontSize={fontSizeMm * 0.85} textAnchor="end" dominantBaseline="middle"
+            fill="#b45309"
+            style={{ pointerEvents: "none", userSelect: "none" }}
+          >
+            <title>Boorgat &lt;60mm van bladrand — risico op breuk</title>
+            ⚠
+          </text>
+        )}
+      </g>
+    );
+  }
+
+  function renderBoorgatGroepLijnen() {
+    const boorgaten = blad.boorgaten ?? [];
+    const groepen = new Map<string, Boorgat[]>();
+    for (const bg of boorgaten) {
+      if (!bg.groepId) continue;
+      if (!groepen.has(bg.groepId)) groepen.set(bg.groepId, []);
+      groepen.get(bg.groepId)!.push(bg);
+    }
+    const result: React.ReactNode[] = [];
+    groepen.forEach((leden, groepId) => {
+      const gesorteerd = [...leden].sort((a, b) => (a.groepVolgnummer ?? 1) - (b.groepVolgnummer ?? 1));
+      for (let i = 0; i < gesorteerd.length - 1; i++) {
+        const a = gesorteerd[i];
+        const b = gesorteerd[i + 1];
+        const ayf = fy(a.positie.y);
+        const byf = fy(b.positie.y);
+        const mx = (a.positie.x + b.positie.x) / 2;
+        const my = (ayf + byf) / 2;
+        const afstand = Math.round(Math.hypot(b.positie.x - a.positie.x, b.positie.y - a.positie.y));
+        result.push(
+          <g key={`groep-${groepId}-${i}`} style={{ pointerEvents: "none" }}>
+            <line
+              x1={a.positie.x} y1={ayf} x2={b.positie.x} y2={byf}
+              stroke="#6B4FB8" strokeWidth={strokeW}
+              strokeDasharray={`${fontSizeMm * 0.3} ${fontSizeMm * 0.2}`}
+              strokeOpacity={0.5}
+            />
+            <text
+              x={mx} y={my - fontSizeMm * 0.5}
+              textAnchor="middle" dominantBaseline="middle"
+              fontSize={fontSizeMm * 0.7} fill="#6B4FB8"
+              stroke="white" strokeWidth={fontSizeMm * 0.18} paintOrder="stroke"
+              fontFamily="system-ui, sans-serif"
+            >
+              {afstand}
+            </text>
+          </g>
+        );
+      }
+    });
+    return result;
+  }
+
+  function renderReferentieLijnen() {
+    const sparingen = blad.sparingen ?? [];
+    const boorgaten = blad.boorgaten ?? [];
+    const ol = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
+    const xs = ol.map(p => p.x);
+    const ys = ol.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+
+    const lijnen: React.ReactNode[] = [];
+
+    function lijnNaarPunt(key: string, van: { x: number; y: number }, naar: { x: number; y: number }) {
+      lijnen.push(
+        <line
+          key={key}
+          x1={van.x} y1={van.y} x2={naar.x} y2={naar.y}
+          stroke="#94a3b8"
+          strokeWidth={strokeW * 0.6}
+          strokeDasharray={`${fontSizeMm * 0.4} ${fontSizeMm * 0.2}`}
+          strokeOpacity={0.7}
+          style={{ pointerEvents: "none" }}
+        />
+      );
+    }
+
+    function referentieoorsprong(ref: NonNullable<(typeof boorgaten)[0]["referentie"]>, pos: { x: number; y: number }): { x: number; y: number } | null {
+      switch (ref.type) {
+        case "LINKSONDER": return null;
+        case "LINKERRAND": return { x: minX, y: fy(pos.y) };
+        case "RECHTERRAND": return { x: maxX, y: fy(pos.y) };
+        case "MIDDEN_BLAD": return { x: midX, y: midY };
+        case "VORIGE_SPARING": {
+          const s = sparingen.find(s => s.id === ref.sparingId);
+          return s ? { x: s.positie.x, y: fy(s.positie.y) } : null;
+        }
+        case "VORIG_BOORGAT": {
+          const bg = boorgaten.find(bg => bg.id === ref.boorgatId);
+          return bg ? { x: bg.positie.x, y: fy(bg.positie.y) } : null;
+        }
+      }
+    }
+
+    const actiefBoorgat = boorgaten.find(bg => bg.id === activeBoorgatId);
+    if (actiefBoorgat?.referentie && actiefBoorgat.referentie.type !== "LINKSONDER") {
+      const orig = referentieoorsprong(actiefBoorgat.referentie, actiefBoorgat.positie);
+      if (orig) lijnNaarPunt(`ref-bg-${actiefBoorgat.id}`, orig, { x: actiefBoorgat.positie.x, y: fy(actiefBoorgat.positie.y) });
+    }
+
+    const actieveSparing = sparingen.find(s => s.id === activeSparingId);
+    if (actieveSparing?.referentie && actieveSparing.referentie.type !== "LINKSONDER") {
+      const orig = referentieoorsprong(actieveSparing.referentie, actieveSparing.positie);
+      if (orig) lijnNaarPunt(`ref-sp-${actieveSparing.id}`, orig, { x: actieveSparing.positie.x, y: fy(actieveSparing.positie.y) });
+    }
+
+    return lijnen;
+  }
+
+  function renderBoorgatLabels() {
+    const labelFontSize = fontSizeMm * 0.85;
+    return boorgatLabels.map((label, idx) => {
+      const labelY = label.zone === 'BOVEN'
+        ? -(DIM_OFFSET + fontSizeMm * 1.8)
+        : blad.breedte + DIM_OFFSET + fontSizeMm * 1.8;
+      const leaderStartY = label.zone === 'BOVEN'
+        ? labelY + labelFontSize * 0.6
+        : labelY - labelFontSize * 0.6;
+      const leaderEndY = label.zone === 'BOVEN'
+        ? label.leaderEndY - fontSizeMm * 0.4
+        : label.leaderEndY + fontSizeMm * 0.4;
+      return (
+        <g key={`bg-label-${idx}`} style={{ pointerEvents: "none" }}>
+          <line
+            x1={label.labelX} y1={leaderStartY}
+            x2={label.groupCenterX} y2={leaderEndY}
+            stroke="#B4B2A9" strokeWidth={strokeW * 0.5}
+            strokeDasharray={`${fontSizeMm * 0.15} ${fontSizeMm * 0.15}`}
+          />
+          <text
+            x={label.labelX} y={labelY}
+            textAnchor="middle" dominantBaseline="middle"
+            fontSize={labelFontSize}
+            fill="#444441"
+            fontFamily="system-ui, sans-serif"
+          >
+            {label.text}
+          </text>
+        </g>
+      );
+    });
+  }
+
+  // Grouped label placement: outside blad-outline, with leader lines.
+  // Boorgaten within 100mm horizontal → one cluster → one combined label.
+  // Zone BOVEN when physical Y >= breedte/2, else ONDER.
+  // Labels spread to min 80mm apart within each zone.
+  type BoorgatLabelInfo = {
+    text: string;
+    labelX: number;
+    zone: 'BOVEN' | 'ONDER';
+    groupCenterX: number;
+    leaderEndY: number;
+  };
+
+  const boorgatLabels: BoorgatLabelInfo[] = (() => {
+    const bgs = blad.boorgaten ?? [];
+    if (bgs.length === 0) return [];
+
+    const sorted = [...bgs].sort((a, b) => a.positie.x - b.positie.x);
+
+    const clusters: Boorgat[][] = [];
+    for (const bg of sorted) {
+      const last = clusters[clusters.length - 1];
+      const lastMember = last?.[last.length - 1];
+      if (lastMember && Math.abs(lastMember.positie.x - bg.positie.x) <= 100) {
+        last.push(bg);
+      } else {
+        clusters.push([bg]);
+      }
+    }
+
+    const labels: BoorgatLabelInfo[] = clusters.map(group => {
+      const centerX = group.reduce((s, b) => s + b.positie.x, 0) / group.length;
+      const avgPhysY = group.reduce((s, b) => s + b.positie.y, 0) / group.length;
+      const zone: 'BOVEN' | 'ONDER' = avgPhysY >= blad.breedte / 2 ? 'BOVEN' : 'ONDER';
+
+      const byDiam = new Map<number, number>();
+      for (const bg of group) byDiam.set(bg.diameter, (byDiam.get(bg.diameter) ?? 0) + 1);
+      const text = Array.from(byDiam.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([d, n]) => n === 1 ? `Ø${d}` : `${n}× Ø${d}`)
+        .join(' + ');
+
+      const leaderEndY = zone === 'BOVEN'
+        ? Math.min(...group.map(bg => fy(bg.positie.y) - bg.diameter / 2))
+        : Math.max(...group.map(bg => fy(bg.positie.y) + bg.diameter / 2));
+
+      return { text, labelX: centerX, zone, groupCenterX: centerX, leaderEndY };
+    });
+
+    const MIN_GAP = 80;
+    for (const zone of ['BOVEN', 'ONDER'] as const) {
+      const zl = labels.filter(l => l.zone === zone).sort((a, b) => a.labelX - b.labelX);
+      for (let i = 1; i < zl.length; i++) {
+        if (zl[i].labelX - zl[i - 1].labelX < MIN_GAP) {
+          zl[i].labelX = zl[i - 1].labelX + MIN_GAP;
+        }
+      }
+    }
+
+    return labels;
+  })();
+
   const transform = `translate(${vp.x} ${vp.y}) scale(${vp.scale})`;
   const m2 = oppervlakteM2(blad);
   const cx = (bb.minX + bb.maxX) / 2;
@@ -344,6 +617,7 @@ export default function Canvas({
         {(blad.sparingen ?? []).map(sparing => {
           const actief = sparing.id === activeSparingId;
           const kleur = sparingKleur(sparing.type, actief);
+          const rsp = { ...sparing, positie: { x: sparing.positie.x, y: fy(sparing.positie.y) } };
           return (
             <g
               key={sparing.id}
@@ -351,15 +625,29 @@ export default function Canvas({
               onPointerDown={(e) => { e.stopPropagation(); onSparingTap?.(sparing.id); }}
             >
               <path
-                d={sparingPath(sparing, "boven")}
+                d={sparingPath(rsp, "boven")}
                 fill={kleur.fill}
                 fillOpacity={actief ? 0.3 : 0.18}
                 stroke={kleur.stroke}
                 strokeWidth={strokeW * 1.5}
               />
+              {sparing.notitie && (
+                <title>{sparing.notitie}</title>
+              )}
+              {sparing.notitie && (
+                <text
+                  x={rsp.positie.x + rsp.breedte / 2 + fontSizeMm * 0.1}
+                  y={rsp.positie.y + rsp.hoogte / 2 - fontSizeMm * 0.1}
+                  fontSize={fontSizeMm * 0.85}
+                  textAnchor="start" dominantBaseline="auto"
+                  style={{ pointerEvents: "none", userSelect: "none" }}
+                >
+                  ✏
+                </text>
+              )}
               {sparing.vlakbouw && (
                 <path
-                  d={sparingPath(sparing, "onder")}
+                  d={sparingPath(rsp, "onder")}
                   fill="none"
                   stroke={kleur.stroke}
                   strokeWidth={strokeW}
@@ -372,8 +660,8 @@ export default function Canvas({
                 <g style={{ pointerEvents: "none" }}>
                   <title>Vlakbouw in composiet — risico op scheuren</title>
                   <text
-                    x={sparing.positie.x + sparing.breedte / 2 - fontSizeMm * 0.1}
-                    y={sparing.positie.y - sparing.hoogte / 2 + fontSizeMm * 0.9}
+                    x={rsp.positie.x + rsp.breedte / 2 - fontSizeMm * 0.1}
+                    y={rsp.positie.y - rsp.hoogte / 2 + fontSizeMm * 0.9}
                     textAnchor="end"
                     dominantBaseline="auto"
                     fontSize={fontSizeMm * 0.9}
@@ -388,8 +676,20 @@ export default function Canvas({
           );
         })}
 
-        {/* m² watermerk — verborgen zodra er sparingen zijn */}
-        {!blad.sparingen?.length && (
+        {/* Referentielijntjes (gestippeld grijs naar referentiepunt) */}
+        {renderReferentieLijnen()}
+
+        {/* Groepverbindingslijnen */}
+        {renderBoorgatGroepLijnen()}
+
+        {/* Boorgaten */}
+        {(blad.boorgaten ?? []).map(bg => renderBoorgat(bg))}
+
+        {/* Boorgat-labels buiten blad-outline, met leader-lijnen */}
+        {renderBoorgatLabels()}
+
+        {/* m² watermerk — verborgen zodra er sparingen of boorgaten zijn */}
+        {!blad.sparingen?.length && !blad.boorgaten?.length && (
           <text
             x={cx}
             y={cy}

@@ -1,6 +1,10 @@
-import type { Blad, Opname } from "../../data/seed-types";
+import seedRaw from "../../data/seed-data.json";
+import type { SeedData, Blad, Opname } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import { rechthoekOutline, segmentLengtes } from "../../drawing/bladHelpers";
+import { randAfstand } from "../../drawing/boorgatHelpers";
+
+const seed = seedRaw as unknown as SeedData;
 
 const SPARING_LABELS: Record<string, string> = {
   KOOKPLAAT: "Kookplaat",
@@ -14,6 +18,7 @@ const SPARING_LABELS: Record<string, string> = {
 interface Props {
   blad: Blad | null;
   state: Opname;
+  onBoorgatToevoegen?: () => void;
 }
 
 function omtrekMm(blad: Blad): number {
@@ -21,7 +26,7 @@ function omtrekMm(blad: Blad): number {
   return Math.round(segmentLengtes(outline).reduce((s, l) => s + l, 0));
 }
 
-export default function BladInfoPanel({ blad, state }: Props) {
+export default function BladInfoPanel({ blad, state, onBoorgatToevoegen }: Props) {
   const matSoort = blad?.materiaalOverride?.soort ?? state.materiaal?.soort ?? "—";
   const dikte = blad?.dikte ?? "—";
   const kleur = blad?.materiaalOverride?.kleur ?? state.materiaal?.kleur ?? "—";
@@ -120,6 +125,60 @@ export default function BladInfoPanel({ blad, state }: Props) {
               );
             })}
           </ul>
+        )}
+      </div>
+
+      {/* Footer: Boorgaten */}
+      <div style={{ padding: "10px 14px", borderTop: "0.5px solid rgba(0,0,0,0.08)" }}>
+        <div style={{ ...labelStyle, marginBottom: 6 }}>Boorgaten</div>
+        {!blad || !blad.boorgaten?.length ? (
+          <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6 }}>Geen boorgaten</p>
+        ) : (
+          <ul style={{ margin: 0, padding: "0 0 6px", listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
+            {blad.boorgaten.map(bg => {
+              const doelLabel = seed.boorgat_doelen.find(d => d.code === bg.doel)?.label ?? bg.doel;
+              const { risico } = randAfstand(bg.positie, bg.diameter, blad);
+              return (
+                <li key={bg.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontSize: 10, color: "#6B4FB8", flexShrink: 0, lineHeight: 1 }}>○</span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: "#0f172a", flex: 1 }}>
+                    {doelLabel} · Ø{bg.diameter}
+                  </span>
+                  {risico && (
+                    <span title="<60mm van bladrand — risico" style={{ fontSize: 11, color: "#d97706", flexShrink: 0 }}>⚠</span>
+                  )}
+                  {bg.gekoppeldAan && (
+                    <span title="Gekoppeld aan sparing" style={{ fontSize: 10, color: "#6B4FB8", flexShrink: 0 }}>⛓</span>
+                  )}
+                  {bg.groepId && (
+                    <span style={{
+                      fontSize: 9, padding: "1px 4px",
+                      background: "#ede9fe", color: "#6B4FB8",
+                      borderRadius: 3, flexShrink: 0,
+                    }}>
+                      groep
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {onBoorgatToevoegen && (
+          <button
+            onClick={onBoorgatToevoegen}
+            disabled={!blad}
+            style={{
+              width: "100%", padding: "5px 0", fontSize: 11,
+              border: "0.5px solid #6B4FB8", borderRadius: 5,
+              background: blad ? "#f5f3ff" : "white",
+              color: blad ? "#6B4FB8" : "#94a3b8",
+              cursor: blad ? "pointer" : "not-allowed",
+              opacity: blad ? 1 : 0.4,
+            }}
+          >
+            + Boorgat toevoegen
+          </button>
         )}
       </div>
     </div>

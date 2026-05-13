@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import type { Opname, Sparing } from "../data/seed-types";
+import type { Opname, Sparing, Boorgat } from "../data/seed-types";
 import type { OpnameAction } from "../state/opnameReducer";
 import BladList from "./step2/BladList";
 import NieuwBladDialog from "./step2/NieuwBladDialog";
@@ -8,9 +8,12 @@ import SegmentPanel from "./step2/SegmentPanel";
 import HoekUithapDialog from "./step2/HoekUithapDialog";
 import SparingDialog from "./step2/SparingDialog";
 import SparingPanel from "./step2/SparingPanel";
+import BoorgatDialog from "./step2/BoorgatDialog";
+import BoorgatPanel from "./step2/BoorgatPanel";
 import CanvasToolbar from "./step2/CanvasToolbar";
 import CanvasStatusBar from "./step2/CanvasStatusBar";
 import BladInfoPanel from "./step2/BladInfoPanel";
+import { volgendBoorgatInGroep } from "../drawing/boorgatHelpers";
 import {
   rechthoekOutline,
   segmentLengtes,
@@ -31,10 +34,13 @@ export default function Step2Tekening({ state, dispatch }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toonNieuwDialog, setToonNieuwDialog] = useState(false);
   const [toonSparingDialog, setToonSparingDialog] = useState(false);
+  const [toonBoorgatDialog, setToonBoorgatDialog] = useState(false);
   const [actieveSegment, setActieveSegment] = useState<number | null>(null);
   const [actieveHoek, setActieveHoek] = useState<number | null>(null);
   const [activeSparingId, setActiveSparingId] = useState<string | null>(null);
+  const [activeBoorgatId, setActiveBoorgatId] = useState<string | null>(null);
   const [lijstOpen, setLijstOpen] = useState(false);
+  const [confirmVerwijderSparingId, setConfirmVerwijderSparingId] = useState<string | null>(null);
   const [vp, setVp] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<(() => void) | null>(null);
@@ -74,9 +80,12 @@ export default function Step2Tekening({ state, dispatch }: Props) {
     setActiveSparingId(prev => (prev === id ? null : id));
   }
 
-  function handleSparingToevoegen(sparing: Sparing) {
+  function handleSparingToevoegen(sparing: Sparing, boorgat?: Boorgat) {
     if (!geselecteerdBlad) return;
     dispatch({ type: "SPARING_TOEVOEGEN", bladId: geselecteerdBlad.id, sparing });
+    if (boorgat) {
+      dispatch({ type: "BOORGAT_TOEVOEGEN", bladId: geselecteerdBlad.id, boorgat });
+    }
     setToonSparingDialog(false);
     setActiveSparingId(sparing.id);
   }
@@ -88,8 +97,53 @@ export default function Step2Tekening({ state, dispatch }: Props) {
 
   function handleSparingVerwijderen(id: string) {
     if (!geselecteerdBlad) return;
-    dispatch({ type: "SPARING_VERWIJDEREN", bladId: geselecteerdBlad.id, id });
+    const heeftGekoppeld = (geselecteerdBlad.boorgaten ?? []).some(bg => bg.gekoppeldAan?.sparingId === id);
+    if (heeftGekoppeld) {
+      setConfirmVerwijderSparingId(id);
+    } else {
+      dispatch({ type: "SPARING_VERWIJDEREN", bladId: geselecteerdBlad.id, id });
+      setActiveSparingId(null);
+    }
+  }
+
+  function handleBoorgatTap(id: string) {
+    setActieveSegment(null);
+    setActieveHoek(null);
     setActiveSparingId(null);
+    setActiveBoorgatId(prev => (prev === id ? null : id));
+  }
+
+  function handleBoorgatToevoegen(boorgat: Boorgat) {
+    if (!geselecteerdBlad) return;
+    dispatch({ type: "BOORGAT_TOEVOEGEN", bladId: geselecteerdBlad.id, boorgat });
+    setToonBoorgatDialog(false);
+    setActiveBoorgatId(boorgat.id);
+  }
+
+  function handleBoorgatBijwerken(id: string, patch: Partial<Boorgat>) {
+    if (!geselecteerdBlad) return;
+    dispatch({ type: "BOORGAT_BIJWERKEN", bladId: geselecteerdBlad.id, id, patch });
+  }
+
+  function handleBoorgatVerwijderen(id: string) {
+    if (!geselecteerdBlad) return;
+    dispatch({ type: "BOORGAT_VERWIJDEREN", bladId: geselecteerdBlad.id, id });
+    setActiveBoorgatId(null);
+  }
+
+  function handleVolgendBoorgatToevoegen(
+    basisId: string,
+    richting: "rechts" | "links" | "boven" | "onder",
+    hartAfstand: number
+  ) {
+    if (!geselecteerdBlad) return;
+    const basis = geselecteerdBlad.boorgaten?.find(bg => bg.id === basisId);
+    if (!basis) return;
+    const nieuw = volgendBoorgatInGroep(basis, richting, hartAfstand);
+    const id = `bg-${Date.now()}`;
+    const boorgat: Boorgat = { ...nieuw, id };
+    dispatch({ type: "BOORGAT_TOEVOEGEN", bladId: geselecteerdBlad.id, boorgat });
+    setActiveBoorgatId(id);
   }
 
   function handleSegmentOpslaan(nieuweLengte: number) {
@@ -147,7 +201,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
     const sparing = geselecteerdBlad.sparingen.find(s => s.id === activeSparingId);
     if (!sparing) return null;
     const anchorX = sparing.positie.x * vp.scale + vp.x;
-    const anchorY = (sparing.positie.y - sparing.hoogte / 2) * vp.scale + vp.y - 16;
+    const anchorY = (geselecteerdBlad.breedte - sparing.positie.y - sparing.hoogte / 2) * vp.scale + vp.y - 16;
     const container = canvasContainerRef.current;
     const panelW = 330;
     const panelH = 155;
@@ -159,6 +213,24 @@ export default function Step2Tekening({ state, dispatch }: Props) {
 
   const sparingPopPos = sparingPopoverPos();
   const actieveSparing = geselecteerdBlad?.sparingen?.find(s => s.id === activeSparingId) ?? null;
+
+  const boorgatPopoverPos = useCallback((): { left: number; top: number } | null => {
+    if (!activeBoorgatId || !geselecteerdBlad?.boorgaten || !canvasContainerRef.current) return null;
+    const bg = geselecteerdBlad.boorgaten.find(b => b.id === activeBoorgatId);
+    if (!bg) return null;
+    const anchorX = bg.positie.x * vp.scale + vp.x;
+    const anchorY = (geselecteerdBlad.breedte - bg.positie.y - bg.diameter / 2) * vp.scale + vp.y - 16;
+    const container = canvasContainerRef.current;
+    const panelW = 320;
+    const panelH = 310;
+    const margin = 8;
+    const left = Math.max(margin, Math.min(anchorX - panelW / 2, container.clientWidth - panelW - margin));
+    const top = Math.max(margin, Math.min(anchorY - panelH, container.clientHeight - panelH - margin));
+    return { left, top };
+  }, [activeBoorgatId, geselecteerdBlad, vp]);
+
+  const boorgatPopPos = boorgatPopoverPos();
+  const actieveBoorgat = geselecteerdBlad?.boorgaten?.find(bg => bg.id === activeBoorgatId) ?? null;
 
   return (
     <div className="flex flex-row h-full min-h-0 overflow-hidden">
@@ -187,6 +259,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
           onZoomOut={() => setVp(v => ({ ...v, scale: Math.max(0.05, v.scale / 1.2) }))}
           onFitScreen={() => fitRef.current?.()}
           onSparingToevoegen={() => setToonSparingDialog(true)}
+          onBoorgatToevoegen={() => setToonBoorgatDialog(true)}
           onDrawerOpen={() => setLijstOpen(true)}
         />
 
@@ -197,6 +270,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
               blad={geselecteerdBlad}
               selectedSegmentIndex={actieveSegment}
               activeSparingId={activeSparingId}
+              activeBoorgatId={activeBoorgatId}
               materiaalSoort={geselecteerdBlad.materiaalOverride?.soort ?? state.materiaal?.soort}
               vp={vp}
               onVpChange={setVp}
@@ -204,6 +278,7 @@ export default function Step2Tekening({ state, dispatch }: Props) {
               onSegmentTap={handleSegmentTap}
               onHoekTap={handleHoekTap}
               onSparingTap={handleSparingTap}
+              onBoorgatTap={handleBoorgatTap}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
@@ -230,10 +305,11 @@ export default function Step2Tekening({ state, dispatch }: Props) {
           )}
 
           {/* Floating SparingPanel */}
-          {actieveSparing && sparingPopPos && (
+          {actieveSparing && sparingPopPos && geselecteerdBlad && (
             <div style={{ position: "absolute", left: sparingPopPos.left, top: sparingPopPos.top, zIndex: 20 }}>
               <SparingPanel
                 sparing={actieveSparing}
+                blad={geselecteerdBlad}
                 onBijwerken={(patch) => handleSparingBijwerken(actieveSparing.id, patch)}
                 onVerwijderen={() => handleSparingVerwijderen(actieveSparing.id)}
                 onSluiten={() => setActiveSparingId(null)}
@@ -249,6 +325,70 @@ export default function Step2Tekening({ state, dispatch }: Props) {
               onToevoegen={handleSparingToevoegen}
               onSluiten={() => setToonSparingDialog(false)}
             />
+          )}
+
+          {/* Floating BoorgatPanel */}
+          {actieveBoorgat && boorgatPopPos && (
+            <div style={{ position: "absolute", left: boorgatPopPos.left, top: boorgatPopPos.top, zIndex: 20 }}>
+              <BoorgatPanel
+                boorgat={actieveBoorgat}
+                blad={geselecteerdBlad}
+                onBijwerken={(patch) => handleBoorgatBijwerken(actieveBoorgat.id, patch)}
+                onVerwijderen={() => handleBoorgatVerwijderen(actieveBoorgat.id)}
+                onVolgendToevoegen={(richting, hartAfstand) =>
+                  handleVolgendBoorgatToevoegen(actieveBoorgat.id, richting, hartAfstand)
+                }
+                onSluiten={() => setActiveBoorgatId(null)}
+              />
+            </div>
+          )}
+
+          {/* BoorgatDialog */}
+          {toonBoorgatDialog && geselecteerdBlad && (
+            <BoorgatDialog
+              blad={geselecteerdBlad}
+              onToevoegen={handleBoorgatToevoegen}
+              onSluiten={() => setToonBoorgatDialog(false)}
+            />
+          )}
+
+          {/* Confirm dialog: verwijder spoelbak met gekoppelde kraan */}
+          {confirmVerwijderSparingId && geselecteerdBlad && (
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }} onClick={() => setConfirmVerwijderSparingId(null)} />
+              <div style={{
+                position: "relative", background: "white", borderRadius: 12,
+                padding: "20px 20px 16px", maxWidth: 320, width: "90%",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+              }}>
+                <p style={{ fontSize: 13, color: "#0f172a", marginBottom: 16, lineHeight: 1.5 }}>
+                  Spoelbak wordt verwijderd. Wil je de bijbehorende kraan ook verwijderen?
+                </p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => {
+                      dispatch({ type: "SPARING_VERWIJDEREN", bladId: geselecteerdBlad.id, id: confirmVerwijderSparingId, verwijderGekoppeld: false });
+                      setActiveSparingId(null);
+                      setConfirmVerwijderSparingId(null);
+                    }}
+                    style={{ flex: 1, padding: "8px 0", fontSize: 12, border: "0.5px solid #cbd5e1", borderRadius: 6, background: "white", cursor: "pointer", color: "#475569" }}
+                  >
+                    Behoud kraan
+                  </button>
+                  <button
+                    onClick={() => {
+                      dispatch({ type: "SPARING_VERWIJDEREN", bladId: geselecteerdBlad.id, id: confirmVerwijderSparingId, verwijderGekoppeld: true });
+                      setActiveSparingId(null);
+                      setActiveBoorgatId(null);
+                      setConfirmVerwijderSparingId(null);
+                    }}
+                    style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 500, border: "none", borderRadius: 6, background: "#dc2626", color: "white", cursor: "pointer" }}
+                  >
+                    Verwijder beide
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* HoekUithapDialog: gecentreerd binnen canvas-area */}
@@ -289,7 +429,11 @@ export default function Step2Tekening({ state, dispatch }: Props) {
       </div>
 
       {/* Kolom 3: BladInfoPanel */}
-      <BladInfoPanel blad={geselecteerdBlad} state={state} />
+      <BladInfoPanel
+        blad={geselecteerdBlad}
+        state={state}
+        onBoorgatToevoegen={() => setToonBoorgatDialog(true)}
+      />
 
       {/* Mobiel drawer voor bladenlijst */}
       {lijstOpen && (
