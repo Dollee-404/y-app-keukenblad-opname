@@ -17,10 +17,73 @@ const ZIJDE_STROKE: Record<RandafwerkingType | "onbepaald", { kleur: string; bre
   VERSTEK:   { kleur: "#0d9488", breedte: 2.5 },
 };
 
-const CANVAS_W = 500;
-const CANVAS_H = 320;
-const PADDING = 52;
-const HIT_HW = 10; // hit-zone half-width in canvas pixels
+const CANVAS_W = 600;
+const CANVAS_H = 420;
+const PADDING = 80;
+const HIT_HW = 10;
+const LABEL_OFFSET_PX = 28;
+const LABEL_MIN_DIST = 60;
+const LEADER_GAP = 3;
+
+type LabelPos = {
+  zijdeId: string;
+  code: string;
+  kleur: string;
+  anchorX: number;
+  anchorY: number;
+  labelX: number;
+  labelY: number;
+};
+
+function computeLabelPositions(
+  zijden: BladZijde[],
+  blad: Blad,
+  tx: (x: number) => number,
+  ty: (y: number) => number,
+): LabelPos[] {
+  const positions: LabelPos[] = [];
+  for (const z of zijden) {
+    const ra = blad.randafwerkingen?.find(r => r.zijdeId === z.id);
+    if (!ra) continue;
+    const typeKey = ra.type as RandafwerkingType;
+    const { kleur } = ZIJDE_STROKE[typeKey] ?? ZIJDE_STROKE.onbepaald;
+    const anchorX = tx(z.middenPunt.x);
+    const anchorY = ty(z.middenPunt.y);
+    positions.push({
+      zijdeId: z.id,
+      code: ra.code,
+      kleur,
+      anchorX,
+      anchorY,
+      labelX: anchorX + z.normaal.x * LABEL_OFFSET_PX,
+      labelY: anchorY + z.normaal.y * LABEL_OFFSET_PX,
+    });
+  }
+
+  // Push labels apart if closer than LABEL_MIN_DIST
+  for (let iter = 0; iter < 4; iter++) {
+    for (let i = 0; i < positions.length; i++) {
+      for (let j = i + 1; j < positions.length; j++) {
+        const a = positions[i];
+        const b = positions[j];
+        const dx = b.labelX - a.labelX;
+        const dy = b.labelY - a.labelY;
+        const dist = Math.hypot(dx, dy);
+        if (dist < LABEL_MIN_DIST && dist > 0.5) {
+          const push = (LABEL_MIN_DIST - dist) / 2;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          positions[i].labelX -= nx * push;
+          positions[i].labelY -= ny * push;
+          positions[j].labelX += nx * push;
+          positions[j].labelY += ny * push;
+        }
+      }
+    }
+  }
+
+  return positions;
+}
 
 function BladCanvas({
   blad,
@@ -45,8 +108,8 @@ function BladCanvas({
   function tx(x: number) { return x * sc + offX; }
   function ty(y: number) { return y * sc + offY; }
 
-  // Hit-zone half-width in data-space units (consistent visual size regardless of scale)
   const hw = HIT_HW / sc;
+  const labelPositions = computeLabelPositions(zijden, blad, tx, ty);
 
   return (
     <svg
@@ -61,38 +124,23 @@ function BladCanvas({
         strokeWidth={1}
       />
 
-      {/* Zijden */}
+      {/* Zijden: colored strokes + transparent hit-zones */}
       {zijden.map(z => {
         const ra = blad.randafwerkingen?.find(r => r.zijdeId === z.id);
         const typeKey: RandafwerkingType | "onbepaald" = ra?.type ?? "onbepaald";
         const actief = z.id === actieveZijdeId;
         const { kleur, breedte } = ZIJDE_STROKE[typeKey];
-        const strokeKleur = actief ? "#f59e0b" : kleur; // amber highlight when active
+        const strokeKleur = actief ? "#f59e0b" : kleur;
 
         const sx = tx(z.startPunt.x); const sy = ty(z.startPunt.y);
         const ex = tx(z.eindPunt.x);  const ey = ty(z.eindPunt.y);
 
-        // Hit-zone polygon (band around segment, in canvas pixels)
         const norm = z.normaal;
         const nhx = norm.x * hw * sc; const nhy = norm.y * hw * sc;
         const hitPts = `${sx + nhx},${sy + nhy} ${ex + nhx},${ey + nhy} ${ex - nhx},${ey - nhy} ${sx - nhx},${sy - nhy}`;
 
-        // Inline label: place at middenPunt, shifted slightly inward (toward blad center)
-        const cx = (bb.minX + bb.maxX) / 2;
-        const cy = (bb.minY + bb.maxY) / 2;
-        const midX = tx(z.middenPunt.x);
-        const midY = ty(z.middenPunt.y);
-        // Inward = toward center of blad
-        const toCenterX = tx(cx) - midX;
-        const toCenterY = ty(cy) - midY;
-        const tLen = Math.hypot(toCenterX, toCenterY) || 1;
-        const LABEL_INSET = 16; // pixels inside the blad
-        const labelX = midX + (toCenterX / tLen) * LABEL_INSET;
-        const labelY = midY + (toCenterY / tLen) * LABEL_INSET;
-
         return (
           <g key={z.id}>
-            {/* Visible segment line */}
             <line
               x1={sx} y1={sy} x2={ex} y2={ey}
               stroke={strokeKleur}
@@ -100,23 +148,6 @@ function BladCanvas({
               strokeLinecap="round"
               style={{ pointerEvents: "none" }}
             />
-
-            {/* Inline label (only when code assigned) */}
-            {ra && (
-              <text
-                x={labelX} y={labelY}
-                textAnchor="middle" dominantBaseline="middle"
-                fontSize={10}
-                fill={actief ? "#f59e0b" : kleur}
-                fontFamily="system-ui, sans-serif"
-                fontWeight={600}
-                style={{ pointerEvents: "none", userSelect: "none" }}
-              >
-                {ra.code}
-              </text>
-            )}
-
-            {/* Transparent hit-zone */}
             <polygon
               points={hitPts}
               fill="transparent"
@@ -124,6 +155,41 @@ function BladCanvas({
               style={{ cursor: "pointer" }}
               onPointerDown={e => { e.stopPropagation(); onZijdeTap(z); }}
             />
+          </g>
+        );
+      })}
+
+      {/* Outside labels with leader lines — rendered last so they appear on top */}
+      {labelPositions.map(lp => {
+        const actief = lp.zijdeId === actieveZijdeId;
+        const kleur = actief ? "#f59e0b" : lp.kleur;
+        const dx = lp.labelX - lp.anchorX;
+        const dy = lp.labelY - lp.anchorY;
+        const len = Math.hypot(dx, dy) || 1;
+        // Leave a small gap at both ends of the leader line
+        const lx1 = lp.anchorX + (dx / len) * LEADER_GAP;
+        const ly1 = lp.anchorY + (dy / len) * LEADER_GAP;
+        const lx2 = lp.labelX - (dx / len) * LEADER_GAP;
+        const ly2 = lp.labelY - (dy / len) * LEADER_GAP;
+        return (
+          <g key={`label-${lp.zijdeId}`} style={{ pointerEvents: "none" }}>
+            <line
+              x1={lx1} y1={ly1} x2={lx2} y2={ly2}
+              stroke="#94a3b8"
+              strokeWidth={0.5}
+            />
+            <text
+              x={lp.labelX}
+              y={lp.labelY}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize={10}
+              fill={kleur}
+              fontFamily="system-ui, sans-serif"
+              fontWeight={600}
+            >
+              {lp.code}
+            </text>
           </g>
         );
       })}
