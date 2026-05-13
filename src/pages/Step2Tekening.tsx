@@ -14,6 +14,7 @@ import BoorgatPanel from "./step2/BoorgatPanel";
 import CanvasToolbar from "./step2/CanvasToolbar";
 import CanvasStatusBar from "./step2/CanvasStatusBar";
 import BladInfoPanel from "./step2/BladInfoPanel";
+import VerstekRelatieDialog from "./step2/VerstekRelatieDialog";
 import { volgendBoorgatInGroep } from "../drawing/boorgatHelpers";
 import {
   rechthoekOutline,
@@ -37,6 +38,7 @@ export default function Step2Tekening({ state, dispatch, selectedBladId }: Props
   const [toonNieuwDialog, setToonNieuwDialog] = useState(false);
   const [toonSparingDialog, setToonSparingDialog] = useState(false);
   const [toonBoorgatDialog, setToonBoorgatDialog] = useState(false);
+  const [toonVerstekDialog, setToonVerstekDialog] = useState(false);
   const [actieveSegment, setActieveSegment] = useState<number | null>(null);
   const [actieveHoek, setActieveHoek] = useState<number | null>(null);
   const [activeSparingId, setActiveSparingId] = useState<string | null>(null);
@@ -442,6 +444,8 @@ export default function Step2Tekening({ state, dispatch, selectedBladId }: Props
         blad={geselecteerdBlad}
         state={state}
         onBoorgatToevoegen={() => setToonBoorgatDialog(true)}
+        onVerstekToevoegen={() => setToonVerstekDialog(true)}
+        onVerstekVerwijderen={(id) => dispatch({ type: "VERSTEK_RELATIE_VERWIJDEREN", id })}
       />
 
       {/* Mobiel drawer voor bladenlijst */}
@@ -476,6 +480,15 @@ export default function Step2Tekening({ state, dispatch, selectedBladId }: Props
         <NieuwBladDialog
           onToevoegen={handleToevoegen}
           onAnnuleer={() => setToonNieuwDialog(false)}
+        />
+      )}
+
+      {toonVerstekDialog && geselecteerdBlad && (
+        <VerstekRelatieDialog
+          huidigBlad={geselecteerdBlad}
+          state={state}
+          onOpslaan={(relatie) => dispatch({ type: "VERSTEK_RELATIE_TOEVOEGEN", relatie })}
+          onSluiten={() => setToonVerstekDialog(false)}
         />
       )}
     </div>
