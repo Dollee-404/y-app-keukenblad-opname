@@ -1,6 +1,8 @@
+import { useState } from "react";
 import type { Opname } from "../../data/seed-types";
 import type { OpnameAction } from "../../state/opnameReducer";
 import { totaalM2, totaalAccessoires, globaleWaarschuwingen } from "../../state/helpers";
+import { saveConcept } from "../../state/conceptStorage";
 import BladKaart from "./BladKaart";
 
 interface Props {
@@ -10,6 +12,14 @@ interface Props {
 }
 
 export default function Step4Overzicht({ state, onNavigeer }: Props) {
+  const [conceptSaved, setConceptSaved] = useState<string | null>(null);
+
+  function handleSaveConcept() {
+    const key = saveConcept(state);
+    setConceptSaved(key);
+    setTimeout(() => setConceptSaved(null), 4000);
+  }
+
   const klantnaam =
     state.opdrachtgever?.naam || state.afleveradres?.naam || null;
 
@@ -180,7 +190,7 @@ export default function Step4Overzicht({ state, onNavigeer }: Props) {
           Print preview
         </button>
         <button
-          onClick={() => console.log("concept opslaan")}
+          onClick={handleSaveConcept}
           style={{
             padding: "9px 18px",
             fontSize: 14,
@@ -195,6 +205,13 @@ export default function Step4Overzicht({ state, onNavigeer }: Props) {
           Concept opslaan
         </button>
       </footer>
+      {conceptSaved && (
+        <div style={{ marginTop: 8, textAlign: "right" }}>
+          <small style={{ color: "#16a34a", fontSize: 13 }}>
+            ✓ Concept opgeslagen — terug te vinden via Concepten-pagina (sprint 9)
+          </small>
+        </div>
+      )}
     </div>
   );
 }
