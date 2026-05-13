@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from "react";
-import type { Blad, Point, Sparing, Boorgat } from "../../data/seed-types";
+import type { Blad, Point, Sparing, Boorgat, Opname } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import {
   rechthoekOutline,
@@ -10,6 +10,7 @@ import {
 } from "../../drawing/bladHelpers";
 import { sparingPath } from "../../drawing/sparingHelpers";
 import { randAfstand } from "../../drawing/boorgatHelpers";
+import { zijdeIsGekoppeld, gekoppeldeZijde } from "../../state/verstekHelpers";
 
 interface Viewport { x: number; y: number; scale: number }
 
@@ -19,6 +20,7 @@ interface Props {
   activeSparingId?: string | null;
   activeBoorgatId?: string | null;
   materiaalSoort?: string;
+  state?: Opname;
   vp: Viewport;
   onVpChange: (vp: Viewport | ((prev: Viewport) => Viewport)) => void;
   onFitRef: React.MutableRefObject<(() => void) | null>;
@@ -51,6 +53,7 @@ export default function Canvas({
   activeSparingId,
   activeBoorgatId,
   materiaalSoort,
+  state,
   vp,
   onVpChange,
   onFitRef,
@@ -251,6 +254,81 @@ export default function Canvas({
         >
           {lengte}
         </text>
+      </g>
+    );
+  }
+
+  // Verstek-annotaties: driehoekjes + koppeling-sub-label per gekoppelde zijde
+  function renderVerstekAnnotaties(i: number) {
+    if (!state) return null;
+    const zijdeId = String(i);
+    if (!zijdeIsGekoppeld(state, blad.id, zijdeId)) return null;
+
+    const n = outline.length;
+    const p = outline[i];
+    const q = outline[(i + 1) % n];
+    const norm = uitwaartsNormaal(outline, i);
+    const dx = q.x - p.x;
+    const dy = q.y - p.y;
+    const len = Math.hypot(dx, dy);
+    const dir = { x: dx / len, y: dy / len };
+
+    const h = fontSizeMm * 0.5;
+    const b = fontSizeMm * 0.35;
+    const inset = fontSizeMm * 0.4;
+
+    const tp1 = { x: p.x + dir.x * inset, y: p.y + dir.y * inset };
+    const tip1 = { x: tp1.x + norm.x * h, y: tp1.y + norm.y * h };
+    const base1a = { x: tp1.x + dir.x * b, y: tp1.y + dir.y * b };
+    const base1b = { x: tp1.x - dir.x * b, y: tp1.y - dir.y * b };
+
+    const tp2 = { x: q.x - dir.x * inset, y: q.y - dir.y * inset };
+    const tip2 = { x: tp2.x + norm.x * h, y: tp2.y + norm.y * h };
+    const base2a = { x: tp2.x + dir.x * b, y: tp2.y + dir.y * b };
+    const base2b = { x: tp2.x - dir.x * b, y: tp2.y - dir.y * b };
+
+    const mid = segmentMidden(outline, i);
+    const textAngle = Math.atan2(q.y - p.y, q.x - p.x) * (180 / Math.PI);
+    const displayAngle = textAngle > 90 || textAngle < -90 ? textAngle + 180 : textAngle;
+    const subOffset = DIM_OFFSET + fontSizeMm * 1.6;
+    const slx = mid.x + norm.x * subOffset;
+    const sly = mid.y + norm.y * subOffset;
+
+    const koppeling = gekoppeldeZijde(state, blad.id, zijdeId);
+    const triColor = "#0d9488";
+
+    return (
+      <g key={`verstek-${i}`} style={{ pointerEvents: "none" }}>
+        <polygon
+          points={`${tip1.x},${tip1.y} ${base1a.x},${base1a.y} ${base1b.x},${base1b.y}`}
+          fill={triColor}
+          fillOpacity={0.85}
+          stroke="none"
+        />
+        <polygon
+          points={`${tip2.x},${tip2.y} ${base2a.x},${base2a.y} ${base2b.x},${base2b.y}`}
+          fill={triColor}
+          fillOpacity={0.85}
+          stroke="none"
+        />
+        {koppeling && (
+          <text
+            x={slx}
+            y={sly}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={triColor}
+            stroke="white"
+            strokeWidth={fontSizeMm * 0.2}
+            paintOrder="stroke"
+            fontSize={fontSizeMm * 0.75}
+            fontFamily="system-ui, sans-serif"
+            transform={`rotate(${displayAngle} ${slx} ${sly})`}
+            style={{ userSelect: "none" }}
+          >
+            ↔ {koppeling.bladNaam}
+          </text>
+        )}
       </g>
     );
   }
@@ -720,6 +798,9 @@ export default function Canvas({
 
         {/* Maatvoering */}
         {outline.map((_, i) => renderMaatvoering(i))}
+
+        {/* Verstek-annotaties */}
+        {outline.map((_, i) => renderVerstekAnnotaties(i))}
 
         {/* Tap-zones segmenten */}
         {outline.map((_, i) => renderSegmentTapZone(i))}

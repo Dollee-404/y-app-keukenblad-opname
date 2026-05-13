@@ -283,6 +283,7 @@ export default function Step2Tekening({ state, dispatch, selectedBladId }: Props
               activeSparingId={activeSparingId}
               activeBoorgatId={activeBoorgatId}
               materiaalSoort={effectiefMateriaalSoort(geselecteerdBlad, state)}
+              state={state}
               vp={vp}
               onVpChange={setVp}
               onFitRef={fitRef}
