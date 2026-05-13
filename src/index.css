@@ -10,3 +10,34 @@ body {
   background: #f8fafc;
   color: #1e293b;
 }
+
+@media print {
+  /* Verberg interactieve elementen */
+  .no-print,
+  button {
+    display: none !important;
+  }
+
+  /* Strek overzichtspagina naar volledige breedte */
+  .overzicht-page {
+    max-width: none !important;
+    padding: 12px !important;
+  }
+
+  /* Forceer kleur-rendering */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Compact lettertype */
+  body {
+    font-size: 12px;
+  }
+
+  /* Voorkomen dat een bladkaart over paginagrens loopt */
+  .blad-kaart-wrapper {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}

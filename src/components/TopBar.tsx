@@ -12,9 +12,10 @@ interface Props {
   huidigStap: number;
   onStap: (nr: number) => void;
   onNaarStap1?: () => void;
+  onVolgende?: () => void;
 }
 
-export default function TopBar({ state, huidigStap, onStap, onNaarStap1 }: Props) {
+export default function TopBar({ state, huidigStap, onStap, onNaarStap1, onVolgende }: Props) {
   const klantNaam =
     state.afleveradres?.naam ||
     state.opdrachtgever?.naam ||
@@ -27,7 +28,7 @@ export default function TopBar({ state, huidigStap, onStap, onNaarStap1 }: Props
 
   return (
     <header
-      className="bg-white border-b flex items-center justify-between flex-shrink-0"
+      className="no-print bg-white border-b flex items-center justify-between flex-shrink-0"
       style={{ height: 50, padding: "0 16px", borderColor: "rgba(0,0,0,0.08)" }}
     >
       {/* Links: klant-blok + separator + step-pills */}
@@ -95,23 +96,25 @@ export default function TopBar({ state, huidigStap, onStap, onNaarStap1 }: Props
       {/* Rechts: opslag-status + Volgende */}
       <div className="flex items-center" style={{ gap: 8 }}>
         <span style={{ fontSize: 11, color: "#94a3b8" }}>Bewaard</span>
-        <button
-          disabled
-          style={{
-            fontSize: 12,
-            padding: "5px 12px",
-            border: "0.5px solid #94a3b8",
-            borderRadius: 6,
-            background: "white",
-            color: "#94a3b8",
-            cursor: "not-allowed",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
-          Volgende ›
-        </button>
+        {huidigStap < 4 && (
+          <button
+            onClick={onVolgende}
+            style={{
+              fontSize: 12,
+              padding: "5px 12px",
+              border: "0.5px solid #94a3b8",
+              borderRadius: 6,
+              background: "white",
+              color: "#0f172a",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            Volgende ›
+          </button>
+        )}
       </div>
     </header>
   );
