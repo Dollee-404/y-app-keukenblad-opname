@@ -96,24 +96,25 @@ export default function TopBar({ state, huidigStap, onStap, onNaarStap1, onVolge
       {/* Rechts: opslag-status + Volgende */}
       <div className="flex items-center" style={{ gap: 8 }}>
         <span style={{ fontSize: 11, color: "#94a3b8" }}>Bewaard</span>
-        <button
-          onClick={huidigStap < 4 ? onVolgende : undefined}
-          disabled={!onVolgende || huidigStap >= 4}
-          style={{
-            fontSize: 12,
-            padding: "5px 12px",
-            border: "0.5px solid #94a3b8",
-            borderRadius: 6,
-            background: "white",
-            color: huidigStap < 4 ? "#0f172a" : "#94a3b8",
-            cursor: huidigStap < 4 ? "pointer" : "not-allowed",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
-          Volgende ›
-        </button>
+        {huidigStap < 4 && (
+          <button
+            onClick={onVolgende}
+            style={{
+              fontSize: 12,
+              padding: "5px 12px",
+              border: "0.5px solid #94a3b8",
+              borderRadius: 6,
+              background: "white",
+              color: "#0f172a",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            Volgende ›
+          </button>
+        )}
       </div>
     </header>
   );
