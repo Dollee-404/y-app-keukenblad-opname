@@ -1,6 +1,6 @@
 import seedRaw from "../data/seed-data.json";
 import { legeOpname } from "../data/seed-types";
-import type { SeedData, Opname, Adres, Blad, Sparing, Boorgat } from "../data/seed-types";
+import type { SeedData, Opname, Adres, Blad, Sparing, Boorgat, MateriaalKeuze, Randafwerking, AccessoireRegel, ZijdeId } from "../data/seed-types";
 
 const seed = seedRaw as unknown as SeedData;
 
@@ -26,7 +26,14 @@ export type OpnameAction =
   | { type: "SPARING_BIJWERKEN"; bladId: string; id: string; patch: Partial<Sparing> }
   | { type: "BOORGAT_TOEVOEGEN"; bladId: string; boorgat: Boorgat }
   | { type: "BOORGAT_VERWIJDEREN"; bladId: string; id: string }
-  | { type: "BOORGAT_BIJWERKEN"; bladId: string; id: string; patch: Partial<Boorgat> };
+  | { type: "BOORGAT_BIJWERKEN"; bladId: string; id: string; patch: Partial<Boorgat> }
+  | { type: "MATERIAAL_INSTELLEN"; keuze: MateriaalKeuze }
+  | { type: "BLAD_MATERIAAL_OVERRIDE"; bladId: string; keuze: MateriaalKeuze | null }
+  | { type: "RANDAFWERKING_BIJWERKEN"; bladId: string; randafwerking: Randafwerking }
+  | { type: "RANDAFWERKING_VERWIJDEREN"; bladId: string; zijdeId: ZijdeId }
+  | { type: "ACCESSOIRE_TOEVOEGEN"; regel: AccessoireRegel }
+  | { type: "ACCESSOIRE_BIJWERKEN"; id: string; patch: Partial<AccessoireRegel> }
+  | { type: "ACCESSOIRE_VERWIJDEREN"; id: string };
 
 export function opnameReducer(state: Opname, action: OpnameAction): Opname {
   switch (action.type) {
@@ -248,5 +255,52 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
         }),
       };
     }
+
+    case "MATERIAAL_INSTELLEN":
+      return { ...state, materiaalKeuze: action.keuze };
+
+    case "BLAD_MATERIAAL_OVERRIDE":
+      return {
+        ...state,
+        bladen: state.bladen.map(b =>
+          b.id === action.bladId
+            ? { ...b, materiaalKeuze: action.keuze ?? undefined }
+            : b
+        ),
+      };
+
+    case "RANDAFWERKING_BIJWERKEN":
+      return {
+        ...state,
+        bladen: state.bladen.map(b => {
+          if (b.id !== action.bladId) return b;
+          const rest = (b.randafwerkingen ?? []).filter(r => r.zijdeId !== action.randafwerking.zijdeId);
+          return { ...b, randafwerkingen: [...rest, action.randafwerking] };
+        }),
+      };
+
+    case "RANDAFWERKING_VERWIJDEREN":
+      return {
+        ...state,
+        bladen: state.bladen.map(b =>
+          b.id === action.bladId
+            ? { ...b, randafwerkingen: (b.randafwerkingen ?? []).filter(r => r.zijdeId !== action.zijdeId) }
+            : b
+        ),
+      };
+
+    case "ACCESSOIRE_TOEVOEGEN":
+      return { ...state, accessoires: [...state.accessoires, action.regel] };
+
+    case "ACCESSOIRE_BIJWERKEN":
+      return {
+        ...state,
+        accessoires: state.accessoires.map(a =>
+          a.id === action.id ? { ...a, ...action.patch } : a
+        ),
+      };
+
+    case "ACCESSOIRE_VERWIJDEREN":
+      return { ...state, accessoires: state.accessoires.filter(a => a.id !== action.id) };
   }
 }
