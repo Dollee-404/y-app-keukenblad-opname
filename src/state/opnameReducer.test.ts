@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { initialState, opnameReducer } from "./opnameReducer";
+import { legeInitialState as initialState, opnameReducer } from "./opnameReducer";
 import type { MateriaalKeuze, Randafwerking, AccessoireRegel, Blad } from "../data/seed-types";
 
 describe("opnameReducer", () => {
@@ -184,6 +184,23 @@ describe("ACCESSOIRE_TOEVOEGEN", () => {
     const result = opnameReducer(initialState, { type: "ACCESSOIRE_TOEVOEGEN", regel });
     expect(result.accessoires).toHaveLength(1);
     expect(result.accessoires[0].naam).toBe("Afdekprofiel 30mm");
+  });
+
+  it("merges catalog items with same SKU instead of adding a second row", () => {
+    const r1: AccessoireRegel = { id: "acc-1", sku: "AFDEK30", naam: "Afdekprofiel 30mm", aantal: 1 };
+    const state = { ...initialState, accessoires: [r1] };
+    const r2: AccessoireRegel = { id: "acc-2", sku: "AFDEK30", naam: "Afdekprofiel 30mm", aantal: 1 };
+    const result = opnameReducer(state, { type: "ACCESSOIRE_TOEVOEGEN", regel: r2 });
+    expect(result.accessoires).toHaveLength(1);
+    expect(result.accessoires[0].aantal).toBe(2);
+  });
+
+  it("always adds a new row for manual items (no SKU) even with same name", () => {
+    const r1: AccessoireRegel = { id: "acc-1", naam: "Speciaal anker", aantal: 1 };
+    const state = { ...initialState, accessoires: [r1] };
+    const r2: AccessoireRegel = { id: "acc-2", naam: "Speciaal anker", aantal: 1 };
+    const result = opnameReducer(state, { type: "ACCESSOIRE_TOEVOEGEN", regel: r2 });
+    expect(result.accessoires).toHaveLength(2);
   });
 });
 

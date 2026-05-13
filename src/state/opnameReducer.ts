@@ -5,6 +5,7 @@ import type { SeedData, Opname, Adres, Blad, Sparing, Boorgat, MateriaalKeuze, R
 const seed = seedRaw as unknown as SeedData;
 
 const _baseState = legeOpname(seed);
+export const legeInitialState: Opname = _baseState;
 export const initialState: Opname = import.meta.env.DEV ? {
   ..._baseState,
   materiaalKeuze: {
@@ -352,8 +353,21 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
         ),
       };
 
-    case "ACCESSOIRE_TOEVOEGEN":
-      return { ...state, accessoires: [...state.accessoires, action.regel] };
+    case "ACCESSOIRE_TOEVOEGEN": {
+      const { regel } = action;
+      if (regel.sku) {
+        const bestaande = state.accessoires.find(a => a.sku === regel.sku);
+        if (bestaande) {
+          return {
+            ...state,
+            accessoires: state.accessoires.map(a =>
+              a.id === bestaande.id ? { ...a, aantal: a.aantal + regel.aantal } : a
+            ),
+          };
+        }
+      }
+      return { ...state, accessoires: [...state.accessoires, regel] };
+    }
 
     case "ACCESSOIRE_BIJWERKEN":
       return {
