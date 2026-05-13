@@ -2,6 +2,7 @@ import type { Blad, Opname, Point, Sparing } from "../data/seed-types";
 import { rechthoekOutline, boundingBox } from "./bladHelpers";
 import { sparingPath } from "./sparingHelpers";
 import { effectiefMateriaalSoort } from "../state/helpers";
+import { bladZijden } from "./bladZijdenHelpers";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -64,6 +65,10 @@ type MiniCanvasBladProps = {
   state: Opname;
   width?: number;
   height?: number;
+  // Optioneel: klikbare zijden voor VerstekRelatieDialog
+  onZijdeKlik?: (zijdeId: string) => void;
+  geselecteerdeZijdeId?: string;
+  geblokkeerdeZijden?: string[];  // al gekoppeld — niet selecteerbaar
 };
 
 export default function MiniCanvasBlad({
@@ -71,6 +76,9 @@ export default function MiniCanvasBlad({
   state,
   width = 240,
   height = 100,
+  onZijdeKlik,
+  geselecteerdeZijdeId,
+  geblokkeerdeZijden = [],
 }: MiniCanvasBladProps): React.JSX.Element {
   const outline = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
   const sparingen = blad.sparingen ?? [];
@@ -78,6 +86,10 @@ export default function MiniCanvasBlad({
 
   const vb = berekenViewBox(outline);
   const fontSize = vb.h * 0.12;
+
+  // Hit-half-width in SVG-coördinaten: ~4% van de grootste dimensie
+  const hw = Math.max(vb.w, vb.h) * 0.04;
+  const zijden = onZijdeKlik ? bladZijden(blad) : [];
 
   return (
     <svg
@@ -133,6 +145,37 @@ export default function MiniCanvasBlad({
           opacity={0.6}
         />
       ))}
+
+      {/* Klikbare zijden (alleen als onZijdeKlik meegegeven) */}
+      {zijden.map(z => {
+        const geselecteerd = z.id === geselecteerdeZijdeId;
+        const geblokkeerd = geblokkeerdeZijden.includes(z.id);
+        const sx = z.startPunt.x; const sy = z.startPunt.y;
+        const ex = z.eindPunt.x;  const ey = z.eindPunt.y;
+        const nx = z.normaal.x * hw; const ny = z.normaal.y * hw;
+        const hitPts = `${sx+nx},${sy+ny} ${ex+nx},${ey+ny} ${ex-nx},${ey-ny} ${sx-nx},${sy-ny}`;
+        const strokeKleur = geblokkeerd ? "#94a3b8" : geselecteerd ? "#0d9488" : "#cbd5e1";
+        const strokeBreedte = geselecteerd ? vb.w * 0.006 : vb.w * 0.003;
+        return (
+          <g key={z.id}>
+            <line
+              x1={sx} y1={sy} x2={ex} y2={ey}
+              stroke={strokeKleur}
+              strokeWidth={strokeBreedte}
+              strokeLinecap="round"
+              strokeDasharray={geblokkeerd ? `${hw * 1.5} ${hw}` : undefined}
+              style={{ pointerEvents: "none" }}
+            />
+            <polygon
+              points={hitPts}
+              fill="transparent"
+              stroke="none"
+              style={{ cursor: geblokkeerd ? "not-allowed" : "pointer" }}
+              onPointerDown={geblokkeerd ? undefined : (e) => { e.stopPropagation(); onZijdeKlik!(z.id); }}
+            />
+          </g>
+        );
+      })}
     </svg>
   );
 }
