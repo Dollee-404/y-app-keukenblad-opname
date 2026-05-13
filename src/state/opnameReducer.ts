@@ -7,6 +7,13 @@ const seed = seedRaw as unknown as SeedData;
 const _baseState = legeOpname(seed);
 export const initialState: Opname = import.meta.env.DEV ? {
   ..._baseState,
+  materiaalKeuze: {
+    soort: "COMPOSIET",
+    dikte_mm: 20,
+    kleur_code: "ADAMINA",
+    kleur_label: "Adamina",
+    leverancier: "Quartzforms",
+  },
   bladen: [
     {
       id: "P1",
@@ -18,8 +25,40 @@ export const initialState: Opname = import.meta.env.DEV ? {
       dikte: 20,
       randen: [],
       randafwerkingen: [
-        { zijdeId: "2", code: "DV40", label: "DV40 – verstek 40mm", type: "VERSTEK", hoogte_mm: 40 },
+        { zijdeId: "0", code: "DV40", label: "DV40 – verstek 40mm", type: "VERSTEK", hoogte_mm: 40 },
         { zijdeId: "1", code: "T1-EF", label: "T1 enkel facet", type: "FACET" },
+        { zijdeId: "2", code: "DV40", label: "DV40 – verstek 40mm", type: "VERSTEK", hoogte_mm: 40 },
+        { zijdeId: "3", code: "KF", label: "Klein facet", type: "FACET" },
+      ],
+    },
+    {
+      id: "P2",
+      label: "Bladdeel B (L-vorm)",
+      werkstukType: "Bladdeel B",
+      categorie: "WB",
+      lengte: 1958,
+      breedte: 800,
+      dikte: 20,
+      randen: [],
+      outline: [
+        { x: 0, y: 0 },
+        { x: 1200, y: 0 },
+        { x: 1200, y: 400 },
+        { x: 1958, y: 400 },
+        { x: 1958, y: 800 },
+        { x: 0, y: 800 },
+      ],
+      materiaalKeuze: {
+        soort: "DEKTON",
+        dikte_mm: 12,
+        kleur_code: "SIRIUS",
+        kleur_label: "Sirius",
+      },
+      randafwerkingen: [
+        { zijdeId: "0", code: "DV20", label: "DV20 – verstek 20mm", type: "VERSTEK", hoogte_mm: 20 },
+        { zijdeId: "1", code: "DV40", label: "DV40 – verstek 40mm", type: "VERSTEK", hoogte_mm: 40 },
+        { zijdeId: "2", code: "T1-EF", label: "T1 enkel facet", type: "FACET" },
+        { zijdeId: "3", code: "A1", label: "A1 facet blad", type: "FACET" },
       ],
     },
   ],

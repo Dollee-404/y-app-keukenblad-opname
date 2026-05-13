@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function Step3Specs({ state, dispatch }: Props) {
-  const [actief, setActief] = useState<SubSectie>(import.meta.env.DEV ? "accessoires" : "materiaal");
+  const [actief, setActief] = useState<SubSectie>(import.meta.env.DEV ? "randafwerking" : "materiaal");
 
   return (
     <div style={{ display: "flex", height: "100%", minHeight: 0 }}>
