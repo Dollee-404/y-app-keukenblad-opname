@@ -31,6 +31,20 @@ export const initialState: Opname = import.meta.env.DEV ? {
         { zijdeId: "2", code: "DV40", label: "DV40 – verstek 40mm", type: "VERSTEK", hoogte_mm: 40 },
         { zijdeId: "3", code: "KF", label: "Klein facet", type: "FACET" },
       ],
+      sparingen: [
+        {
+          id: "sp-1",
+          type: "KOOKPLAAT",
+          bladId: "P1",
+          inbouwwijze: "VLAKBOUW",
+          productMerk: "Bora",
+          productModel: "C75",
+          positie: { x: 979, y: 400 },
+          breedte: 764,
+          hoogte: 519,
+          vlakbouw: { breedteOnder: 740, hoogteOnder: 495, radiusMm: 5, tredeMm: 7 },
+        },
+      ],
     },
     {
       id: "P2",

@@ -8,7 +8,7 @@ import Step3Specs from "./pages/step3/Step3Specs";
 export default function App() {
   const [state, dispatch] = useReducer(opnameReducer, initialState);
   const [debugOpen, setDebugOpen] = useState(false);
-  const [huidigStap, setHuidigStap] = useState<number>(1);
+  const [huidigStap, setHuidigStap] = useState<number>(import.meta.env.DEV ? 3 : 1);
 
   return (
     <div className="h-full flex flex-col bg-slate-50">

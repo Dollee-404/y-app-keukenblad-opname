@@ -1,4 +1,5 @@
 import type { Blad, Opname } from "../../data/seed-types";
+import { effectiefMateriaalSoort } from "../../state/helpers";
 
 interface Props {
   blad: Blad | null;
@@ -27,7 +28,7 @@ export default function CanvasToolbar({
   onBoorgatToevoegen,
   onDrawerOpen,
 }: Props) {
-  const matSoort = blad?.materiaalOverride?.soort ?? state.materiaal?.soort ?? "";
+  const matSoort = blad ? effectiefMateriaalSoort(blad, state) : "";
   const dikte = blad?.dikte ?? "";
   const werkstuk = blad?.werkstukType ?? "";
 
