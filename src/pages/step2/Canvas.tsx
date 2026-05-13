@@ -10,7 +10,7 @@ import {
 } from "../../drawing/bladHelpers";
 import { sparingPath } from "../../drawing/sparingHelpers";
 import { randAfstand } from "../../drawing/boorgatHelpers";
-import { zijdeIsGekoppeld, gekoppeldeZijde } from "../../state/verstekHelpers";
+import { gekoppeldeZijde } from "../../state/verstekHelpers";
 
 interface Viewport { x: number; y: number; scale: number }
 
@@ -258,11 +258,12 @@ export default function Canvas({
     );
   }
 
-  // Verstek-annotaties: driehoekjes + koppeling-sub-label per gekoppelde zijde
+  // Verstek-annotaties: driehoekjes (ra.verstek=true) + koppeling-sub-label (alleen bij actieve relatie)
   function renderVerstekAnnotaties(i: number) {
     if (!state) return null;
     const zijdeId = String(i);
-    if (!zijdeIsGekoppeld(state, blad.id, zijdeId)) return null;
+    const ra = blad.randafwerkingen?.find(r => r.zijdeId === zijdeId);
+    if (!ra?.verstek) return null;
 
     const n = outline.length;
     const p = outline[i];
