@@ -36,7 +36,7 @@ export default function Step4Overzicht({ state, onNavigeer }: Props) {
   const extraWarnings = warnings.length - visibleWarnings.length;
 
   return (
-    <div style={{ maxWidth: 1024, margin: "0 auto", padding: "24px 16px" }}>
+    <div className="overzicht-page" style={{ maxWidth: 1024, margin: "0 auto", padding: "24px 16px" }}>
       {/* Amber banner als geen klant */}
       {!klantnaam && (
         <div style={{
@@ -176,7 +176,7 @@ export default function Step4Overzicht({ state, onNavigeer }: Props) {
       {/* Zone 5 — Acties */}
       <footer style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button
-          onClick={() => console.log("print preview")}
+          onClick={() => window.print()}
           style={{
             padding: "9px 18px",
             fontSize: 14,

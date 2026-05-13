@@ -28,7 +28,7 @@ export default function TopBar({ state, huidigStap, onStap, onNaarStap1, onVolge
 
   return (
     <header
-      className="bg-white border-b flex items-center justify-between flex-shrink-0"
+      className="no-print bg-white border-b flex items-center justify-between flex-shrink-0"
       style={{ height: 50, padding: "0 16px", borderColor: "rgba(0,0,0,0.08)" }}
     >
       {/* Links: klant-blok + separator + step-pills */}

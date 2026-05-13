@@ -23,7 +23,7 @@ export default function BladKaart({ blad, state, onBewerken }: BladKaartProps) {
   const aantalBoorgaten = (blad.boorgaten ?? []).length;
 
   return (
-    <div style={{ background: "white", borderRadius: 10, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+    <div className="blad-kaart-wrapper" style={{ background: "white", borderRadius: 10, border: "1px solid #e2e8f0", overflow: "hidden" }}>
       {/* Card-header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 14px 8px" }}>
         <div>
