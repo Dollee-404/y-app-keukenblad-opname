@@ -1,6 +1,7 @@
 import type { Blad, Opname } from "../data/seed-types";
 import { rechthoekOutline } from "../drawing/bladHelpers";
 import { bladZijden } from "../drawing/bladZijdenHelpers";
+import { ongekoppeldeVerstekzijden, verstekConflicten } from "./verstekHelpers";
 
 /**
  * Returns the effective materiaalsoort for a blad, respecting sprint-4 and
@@ -63,6 +64,18 @@ export function globaleWaarschuwingen(state: Opname): string[] {
 
   if (!state.materiaalKeuze?.kleur_code) {
     warnings.push("Geen kleur gekozen");
+  }
+
+  const ongekoppeld = ongekoppeldeVerstekzijden(state);
+  if (ongekoppeld.length > 0) {
+    const n = ongekoppeld.length;
+    warnings.push(`${n} verstek-${n === 1 ? "zijde" : "zijden"} niet gekoppeld`);
+  }
+
+  const conflicten = verstekConflicten(state);
+  if (conflicten.length > 0) {
+    const n = conflicten.length;
+    warnings.push(`${n} DV-${n === 1 ? "code" : "codes"} met verstek-conflict`);
   }
 
   return warnings;
