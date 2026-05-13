@@ -29,6 +29,7 @@ interface Viewport { x: number; y: number; scale: number }
 interface Props {
   state: Opname;
   dispatch: React.Dispatch<OpnameAction>;
+  selectedBladId?: string;
 }
 
 export default function Step2Tekening({ state, dispatch }: Props) {

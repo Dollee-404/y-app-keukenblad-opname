@@ -4,19 +4,30 @@ import TopBar from "./components/TopBar";
 import Step1Klant from "./pages/Step1Klant";
 import Step2Tekening from "./pages/Step2Tekening";
 import Step3Specs from "./pages/step3/Step3Specs";
+import Step4Overzicht from "./pages/step4/Step4Overzicht";
 
 export default function App() {
   const [state, dispatch] = useReducer(opnameReducer, initialState);
   const [debugOpen, setDebugOpen] = useState(false);
   const [huidigStap, setHuidigStap] = useState<number>(import.meta.env.DEV ? 3 : 1);
+  const [navigatieContext, setNavigatieContext] = useState<{
+    bladId?: string;
+    subSection?: string;
+  }>({});
+
+  function naarStapMetContext(stap: number, bladId?: string, subSection?: string) {
+    setNavigatieContext({ bladId, subSection });
+    setHuidigStap(stap);
+  }
 
   return (
     <div className="h-full flex flex-col bg-slate-50">
       <TopBar
         state={state}
         huidigStap={huidigStap}
-        onStap={setHuidigStap}
-        onNaarStap1={() => setHuidigStap(1)}
+        onStap={(nr) => naarStapMetContext(nr)}
+        onNaarStap1={() => naarStapMetContext(1)}
+        onVolgende={() => naarStapMetContext(huidigStap + 1)}
       />
 
       {huidigStap === 1 && (
@@ -45,19 +56,19 @@ export default function App() {
 
       {huidigStap === 2 && (
         <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <Step2Tekening state={state} dispatch={dispatch} />
+          <Step2Tekening state={state} dispatch={dispatch} selectedBladId={navigatieContext.bladId} />
         </main>
       )}
 
       {huidigStap === 3 && (
         <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <Step3Specs state={state} dispatch={dispatch} />
+          <Step3Specs state={state} dispatch={dispatch} selectedSubSection={navigatieContext.subSection} />
         </main>
       )}
 
       {huidigStap === 4 && (
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center text-slate-400 py-16">Overzicht — volgt in sprint 5</div>
+        <main className="flex-1 overflow-y-auto">
+          <Step4Overzicht state={state} dispatch={dispatch} onNavigeer={naarStapMetContext} />
         </main>
       )}
     </div>

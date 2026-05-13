@@ -17,6 +17,7 @@ const SUB_SECTIES: { id: SubSectie; label: string }[] = [
 interface Props {
   state: Opname;
   dispatch: React.Dispatch<OpnameAction>;
+  selectedSubSection?: string;
 }
 
 export default function Step3Specs({ state, dispatch }: Props) {
