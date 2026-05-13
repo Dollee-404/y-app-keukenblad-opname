@@ -135,10 +135,10 @@ describe("bladenMetIncompleteRandafwerking", () => {
   it("rechthoek met 4/4 randafwerkingen → compleet", () => {
     const blad = maakBlad({
       randafwerkingen: [
-        { zijdeId: "0", code: "DV40", label: "DV40" },
-        { zijdeId: "1", code: "DV40", label: "DV40" },
-        { zijdeId: "2", code: "DV40", label: "DV40" },
-        { zijdeId: "3", code: "DV40", label: "DV40" },
+        { zijdeId: "0", code: "DV40", label: "DV40", type: "VERSTEK" as const },
+        { zijdeId: "1", code: "DV40", label: "DV40", type: "VERSTEK" as const },
+        { zijdeId: "2", code: "DV40", label: "DV40", type: "VERSTEK" as const },
+        { zijdeId: "3", code: "DV40", label: "DV40", type: "VERSTEK" as const },
       ],
     });
     const state = maakVolledigeOpname({ bladen: [blad] });
@@ -149,10 +149,10 @@ describe("bladenMetIncompleteRandafwerking", () => {
     const blad = maakBlad({
       outline: L_OUTLINE,
       randafwerkingen: [
-        { zijdeId: "0", code: "DV40", label: "DV40" },
-        { zijdeId: "1", code: "DV40", label: "DV40" },
-        { zijdeId: "2", code: "DV40", label: "DV40" },
-        { zijdeId: "3", code: "DV40", label: "DV40" },
+        { zijdeId: "0", code: "DV40", label: "DV40", type: "VERSTEK" as const },
+        { zijdeId: "1", code: "DV40", label: "DV40", type: "VERSTEK" as const },
+        { zijdeId: "2", code: "DV40", label: "DV40", type: "VERSTEK" as const },
+        { zijdeId: "3", code: "DV40", label: "DV40", type: "VERSTEK" as const },
       ],
     });
     const state = maakVolledigeOpname({ bladen: [blad] });
@@ -169,10 +169,10 @@ describe("globaleWaarschuwingen", () => {
   it("state met kleur + alle zijden compleet → []", () => {
     const blad = maakBlad({
       randafwerkingen: [
-        { zijdeId: "0", code: "DV40", label: "DV40" },
-        { zijdeId: "1", code: "DV40", label: "DV40" },
-        { zijdeId: "2", code: "DV40", label: "DV40" },
-        { zijdeId: "3", code: "DV40", label: "DV40" },
+        { zijdeId: "0", code: "DV40", label: "DV40", type: "VERSTEK" as const },
+        { zijdeId: "1", code: "DV40", label: "DV40", type: "VERSTEK" as const },
+        { zijdeId: "2", code: "DV40", label: "DV40", type: "VERSTEK" as const },
+        { zijdeId: "3", code: "DV40", label: "DV40", type: "VERSTEK" as const },
       ],
     });
     const state = maakVolledigeOpname({ bladen: [blad] });

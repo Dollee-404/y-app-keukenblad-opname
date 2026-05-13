@@ -71,7 +71,7 @@ export default function MiniCanvasBlad({
   state,
   width = 240,
   height = 100,
-}: MiniCanvasBladProps): JSX.Element {
+}: MiniCanvasBladProps): React.JSX.Element {
   const outline = blad.outline ?? rechthoekOutline(blad.lengte, blad.breedte);
   const sparingen = blad.sparingen ?? [];
   const boorgaten = blad.boorgaten ?? [];

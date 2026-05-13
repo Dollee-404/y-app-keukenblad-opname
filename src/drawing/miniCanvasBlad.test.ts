@@ -37,12 +37,12 @@ function maakBlad(soort: string, outline?: Point[]): Blad {
     breedte: 800,
     dikte: 20,
     randen: [],
-    materiaalOverride: { soort },
+    materiaalOverride: { soort } as unknown as Blad["materiaalOverride"],
     ...(outline ? { outline } : {}),
   };
 }
 
-function maakOpname(soort: string): Opname {
+function maakOpname(_soort: string): Opname {
   return {
     ordernummer: "TEST-001",
     datum: "2026-05-13",
