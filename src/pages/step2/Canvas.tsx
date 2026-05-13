@@ -501,7 +501,7 @@ export default function Canvas({
       const myLabelX = sorted[i].positie.x + sorted[i].diameter / 2;
       let slot = 0;
       for (;;) {
-        const slotOffset = slot * fontSizeMm * 1.1;
+        const slotOffset = slot * fontSizeMm * 1.35;
         const taken = sorted.slice(0, i).some(
           prev =>
             Math.abs(prev.positie.x + prev.diameter / 2 - myLabelX) < CLUSTER_THRESHOLD &&
@@ -510,7 +510,7 @@ export default function Canvas({
         if (!taken) break;
         slot++;
       }
-      offsets.set(sorted[i].id, slot * fontSizeMm * 1.1);
+      offsets.set(sorted[i].id, slot * fontSizeMm * 1.35);
     }
     return offsets;
   })();
