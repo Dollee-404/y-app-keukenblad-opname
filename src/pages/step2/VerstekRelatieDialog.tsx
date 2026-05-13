@@ -5,8 +5,7 @@ import { bladZijden } from "../../drawing/bladZijdenHelpers";
 import { zijdeIsGekoppeld, gekoppeldeZijde } from "../../state/verstekHelpers";
 import { oppervlakteM2 } from "../../state/helpers";
 
-let relTeller = 0;
-function nieuwRelatieId(): string { return `rel-${Date.now()}-${++relTeller}`; }
+const HOEK_OPTIES: number[] = [22.5, 30, 45, 60];
 
 interface Props {
   huidigBlad: Blad;
@@ -20,14 +19,20 @@ export default function VerstekRelatieDialog({ huidigBlad, state, onOpslaan, onS
   const [gekozenZijdeA, setGekozenZijdeA] = useState<string | null>(null);
   const [gekozenBladB, setGekozenBladB] = useState<Blad | null>(null);
   const [gekozenZijdeB, setGekozenZijdeB] = useState<string | null>(null);
+  const [gekozenHoek, setGekozenHoek] = useState<number>(45);
+  const [notitie, setNotitie] = useState("");
 
   const zijdenA = bladZijden(huidigBlad);
   const andreBladenList = state.bladen.filter(b => b.id !== huidigBlad.id);
 
-  // Zijden van huidig blad die al een actieve relatie hebben
   const geblokkeerdeZijdenA = zijdenA
     .filter(z => zijdeIsGekoppeld(state, huidigBlad.id, z.id))
     .map(z => z.id);
+
+  const zijdenB = gekozenBladB ? bladZijden(gekozenBladB) : [];
+  const geblokkeerdeZijdenB = gekozenBladB
+    ? zijdenB.filter(z => zijdeIsGekoppeld(state, gekozenBladB.id, z.id)).map(z => z.id)
+    : [];
 
   function volgendeStap() {
     if (stap === 1 && gekozenZijdeA) setStap(2);
@@ -42,12 +47,13 @@ export default function VerstekRelatieDialog({ huidigBlad, state, onOpslaan, onS
   function handleOpslaan() {
     if (!gekozenZijdeA || !gekozenBladB || !gekozenZijdeB) return;
     onOpslaan({
-      id: nieuwRelatieId(),
+      id: crypto.randomUUID(),
       bladA_id: huidigBlad.id,
       zijdeA_id: gekozenZijdeA,
       bladB_id: gekozenBladB.id,
       zijdeB_id: gekozenZijdeB,
-      hoek_graden: 45,
+      hoek_graden: gekozenHoek,
+      notitie: notitie.trim() || undefined,
     });
     onSluiten();
   }
@@ -59,6 +65,10 @@ export default function VerstekRelatieDialog({ huidigBlad, state, onOpslaan, onS
 
   const zijdeLabelA = gekozenZijdeA
     ? (zijdenA.find(z => z.id === gekozenZijdeA)?.label ?? gekozenZijdeA)
+    : null;
+
+  const zijdeLabelB = gekozenZijdeB
+    ? (zijdenB.find(z => z.id === gekozenZijdeB)?.label ?? gekozenZijdeB)
     : null;
 
   return (
@@ -132,7 +142,6 @@ export default function VerstekRelatieDialog({ huidigBlad, state, onOpslaan, onS
                 />
               </div>
 
-              {/* Zijde-namen knoppen als alternatief voor kleine zijden */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                 {zijdenA.map(z => {
                   const geblokkeerd = geblokkeerdeZijdenA.includes(z.id);
@@ -142,7 +151,7 @@ export default function VerstekRelatieDialog({ huidigBlad, state, onOpslaan, onS
                       key={z.id}
                       onClick={() => !geblokkeerd && setGekozenZijdeA(z.id)}
                       disabled={geblokkeerd}
-                      title={gekoppeld ? `Al gekoppeld aan ${gekoppeld.bladNaam} ${gekoppeld.zijdeId}` : undefined}
+                      title={gekoppeld ? `Gekoppeld aan ${gekoppeld.bladNaam} ${gekoppeld.zijdeId}` : undefined}
                       style={{
                         padding: "5px 12px",
                         borderRadius: 16,
@@ -226,10 +235,114 @@ export default function VerstekRelatieDialog({ huidigBlad, state, onOpslaan, onS
             </div>
           )}
 
-          {/* ── Stap 3: Placeholder voor taak 5b ── */}
-          {stap === 3 && (
-            <div style={{ color: "#94a3b8", fontSize: 13 }}>
-              Stap 3 — zijde-selectie {gekozenBladB?.label} + hoek (taak 5b)
+          {/* ── Stap 3: Zijde-selectie ander blad + hoek + notitie ── */}
+          {stap === 3 && gekozenBladB && (
+            <div>
+              <p style={{ fontSize: 13, color: "#475569", marginBottom: 12 }}>
+                Welke zijde van <strong>{gekozenBladB.label}</strong> sluit verstek aan op {zijdeLabelA} van {huidigBlad.label}?
+              </p>
+
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: 8, marginBottom: 12 }}>
+                <MiniCanvasBlad
+                  blad={gekozenBladB}
+                  state={state}
+                  width={496}
+                  height={220}
+                  onZijdeKlik={zijdeId => setGekozenZijdeB(zijdeId)}
+                  geselecteerdeZijdeId={gekozenZijdeB ?? undefined}
+                  geblokkeerdeZijden={geblokkeerdeZijdenB}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                {zijdenB.map(z => {
+                  const geblokkeerd = geblokkeerdeZijdenB.includes(z.id);
+                  const gekoppeld = geblokkeerd ? gekoppeldeZijde(state, gekozenBladB.id, z.id) : null;
+                  return (
+                    <button
+                      key={z.id}
+                      onClick={() => !geblokkeerd && setGekozenZijdeB(z.id)}
+                      disabled={geblokkeerd}
+                      title={gekoppeld ? `Gekoppeld aan ${gekoppeld.bladNaam}` : undefined}
+                      style={{
+                        padding: "5px 12px",
+                        borderRadius: 16,
+                        border: "1px solid",
+                        borderColor: geblokkeerd ? "#e2e8f0" : gekozenZijdeB === z.id ? "#0d9488" : "#cbd5e1",
+                        background: gekozenZijdeB === z.id ? "#0d9488" : geblokkeerd ? "#f8fafc" : "white",
+                        color: gekozenZijdeB === z.id ? "white" : geblokkeerd ? "#94a3b8" : "#374151",
+                        fontSize: 12,
+                        cursor: geblokkeerd ? "not-allowed" : "pointer",
+                        minHeight: 32,
+                      }}
+                    >
+                      {z.label}
+                      {gekoppeld && <span style={{ marginLeft: 4, opacity: 0.7 }}>↔</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {gekozenZijdeB && (
+                <p style={{ fontSize: 12, color: "#0d9488", fontWeight: 500, marginBottom: 16 }}>
+                  ✓ Geselecteerd: {zijdeLabelB}
+                </p>
+              )}
+
+              {/* Hoek-dropdown */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 11, color: "#64748b", marginBottom: 6, fontWeight: 500 }}>
+                  Verstekhoek
+                </label>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {HOEK_OPTIES.map(h => (
+                    <button
+                      key={h}
+                      onClick={() => setGekozenHoek(h)}
+                      style={{
+                        flex: 1,
+                        padding: "7px 4px",
+                        borderRadius: 8,
+                        border: "1px solid",
+                        borderColor: gekozenHoek === h ? "#0d9488" : "#e2e8f0",
+                        background: gekozenHoek === h ? "#0d9488" : "white",
+                        color: gekozenHoek === h ? "white" : "#374151",
+                        fontSize: 12,
+                        fontWeight: gekozenHoek === h ? 600 : 400,
+                        cursor: "pointer",
+                        minHeight: 36,
+                      }}
+                    >
+                      {h}°
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notitie */}
+              <div>
+                <label style={{ display: "block", fontSize: 11, color: "#64748b", marginBottom: 6, fontWeight: 500 }}>
+                  Notitie (optioneel)
+                </label>
+                <textarea
+                  value={notitie}
+                  onChange={e => setNotitie(e.target.value)}
+                  placeholder="Bijv. bovenzijde verlijmen na plaatsing"
+                  rows={2}
+                  style={{
+                    width: "100%",
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    fontSize: 12,
+                    color: "#374151",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                    boxSizing: "border-box",
+                    outline: "none",
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>
