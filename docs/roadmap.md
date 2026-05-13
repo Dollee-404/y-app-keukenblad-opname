@@ -182,3 +182,11 @@ Dat heeft drie consequenties:
   opname. Stand-alone bruikbaar (bv. tijdens klantadvies). Aparte route
   binnen extensie. Mogelijk gekoppeld aan sprint 4 data zodat producten
   daar consistent zijn.
+
+## Sprint 7+ data-verrijking (kan parallel aan andere sprints)
+
+- **Hex-waarden voor materiaalkleuren** — verzamel hex-waarden voor
+  de 561 kleuren in seed-data, beginnend met de meest voorkomende
+  per leverancier. Bron: leverancier-websites (Quartzforms, Dekton,
+  Caesarstone, etc.). Na verzameling: kleurstalen activeren in
+  MateriaalSectie UI.
