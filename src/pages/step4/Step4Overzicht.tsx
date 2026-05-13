@@ -129,7 +129,7 @@ export default function Step4Overzicht({ state, onNavigeer }: Props) {
                 key={blad.id}
                 blad={blad}
                 state={state}
-                onBewerken={() => {/* taak 5 */}}
+                onBewerken={() => onNavigeer(2, blad.id)}
               />
             ))
           )}
@@ -144,7 +144,7 @@ export default function Step4Overzicht({ state, onNavigeer }: Props) {
             <span style={{ fontWeight: 400, color: "#64748b" }}>({totaalAccessoires(state)} stuks)</span>
           </span>
           <button
-            onClick={() => {/* taak 5 */}}
+            onClick={() => onNavigeer(3, undefined, 'accessoires')}
             style={{ background: "none", border: "none", color: "#0d9488", cursor: "pointer", fontSize: 13, padding: 0 }}
           >
             Bewerken ↗

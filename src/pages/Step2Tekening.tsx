@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import type { Opname, Sparing, Boorgat } from "../data/seed-types";
 import type { OpnameAction } from "../state/opnameReducer";
 import { effectiefMateriaalSoort } from "../state/helpers";
@@ -32,7 +32,7 @@ interface Props {
   selectedBladId?: string;
 }
 
-export default function Step2Tekening({ state, dispatch }: Props) {
+export default function Step2Tekening({ state, dispatch, selectedBladId }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toonNieuwDialog, setToonNieuwDialog] = useState(false);
   const [toonSparingDialog, setToonSparingDialog] = useState(false);
@@ -48,6 +48,13 @@ export default function Step2Tekening({ state, dispatch }: Props) {
   const fitRef = useRef<(() => void) | null>(null);
 
   const geselecteerdBlad = state.bladen.find(b => b.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (!selectedBladId) return;
+    const exists = state.bladen.some(b => b.id === selectedBladId);
+    if (exists) setSelectedId(selectedBladId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleToevoegen(blad: Blad) {
     dispatch({ type: "BLAD_TOEVOEGEN", blad });

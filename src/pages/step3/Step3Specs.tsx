@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Opname } from "../../data/seed-types";
 import type { OpnameAction } from "../../state/opnameReducer";
 import MateriaalSectie from "./MateriaalSectie";
@@ -20,8 +20,16 @@ interface Props {
   selectedSubSection?: string;
 }
 
-export default function Step3Specs({ state, dispatch }: Props) {
+export default function Step3Specs({ state, dispatch, selectedSubSection }: Props) {
   const [actief, setActief] = useState<SubSectie>(import.meta.env.DEV ? "randafwerking" : "materiaal");
+
+  useEffect(() => {
+    if (!selectedSubSection) return;
+    if (SUB_SECTIES.some(s => s.id === selectedSubSection)) {
+      setActief(selectedSubSection as SubSectie);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div style={{ display: "flex", height: "100%", minHeight: 0 }}>
