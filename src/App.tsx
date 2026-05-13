@@ -1,5 +1,9 @@
 import { useReducer, useState } from "react";
-import { opnameReducer, initialState } from "./state/opnameReducer";
+import { opnameReducer, initialState, legeInitialState } from "./state/opnameReducer";
+
+const leegParam = new URLSearchParams(window.location.search).has("leeg");
+const startState = leegParam ? legeInitialState : initialState;
+const startStap = leegParam ? 1 : (import.meta.env.DEV ? 3 : 1);
 import TopBar from "./components/TopBar";
 import Step1Klant from "./pages/Step1Klant";
 import Step2Tekening from "./pages/Step2Tekening";
@@ -7,9 +11,9 @@ import Step3Specs from "./pages/step3/Step3Specs";
 import Step4Overzicht from "./pages/step4/Step4Overzicht";
 
 export default function App() {
-  const [state, dispatch] = useReducer(opnameReducer, initialState);
+  const [state, dispatch] = useReducer(opnameReducer, startState);
   const [debugOpen, setDebugOpen] = useState(false);
-  const [huidigStap, setHuidigStap] = useState<number>(import.meta.env.DEV ? 3 : 1);
+  const [huidigStap, setHuidigStap] = useState<number>(startStap);
   const [navigatieContext, setNavigatieContext] = useState<{
     bladId?: string;
     subSection?: string;
