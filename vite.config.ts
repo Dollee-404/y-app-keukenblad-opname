@@ -6,4 +6,7 @@ export default defineConfig({
   base: "/y-app-keukenblad-opname/",
   plugins: [react(), tailwindcss()],
   server: { port: 5174 },
+  test: {
+    include: ["src/**/*.test.ts"],
+  },
 });
