@@ -46,12 +46,24 @@ export function computeViewport(blad: Blad): PdfViewport {
  * Converteert een punt in blad-coördinaten (Y=0 = voorkant/onder, fysiek)
  * naar PDF-coördinaten in mm (Y=0 = bovenkant pagina).
  *
- * Gebruik voor: sparing-posities, boorgat-posities, outline-punten.
+ * Gebruik voor: sparing-posities, boorgat-posities.
  * Dezelfde Y-flip als Canvas.tsx `fy = (y) => blad.breedte - y`.
  */
 export function bladToPdf(point: Point, blad: Blad, viewport: PdfViewport): Point {
   return {
     x: viewport.drawingAreaX + point.x * viewport.scaleFactor,
     y: viewport.drawingAreaY + (blad.breedte - point.y) * viewport.scaleFactor,
+  };
+}
+
+/**
+ * Converteert een punt in SVG/outline-coördinaten (Y=0 = boven = achterkant)
+ * naar PDF-coördinaten. Geen Y-flip — Canvas.tsx gebruikt de outline ook
+ * zonder fy-flip, alleen sparingen/boorgaten krijgen fy toegepast.
+ */
+export function outlineToPdf(point: Point, viewport: PdfViewport): Point {
+  return {
+    x: viewport.drawingAreaX + point.x * viewport.scaleFactor,
+    y: viewport.drawingAreaY + point.y * viewport.scaleFactor,
   };
 }
