@@ -289,6 +289,9 @@ export type Opname = {
     handtekeningKlant?: FileRef;
   };
 
+  // VERSTEK-RELATIES
+  verstekRelaties?: VerstekRelatie[];
+
   // VRIJ TEKSTVELD
   bijzonderheden: string;
   geactiveerdeClausules: string[];       // keys uit seed.clausules
@@ -357,6 +360,17 @@ export type Randafwerking = {
   label: string;
   type: RandafwerkingType;
   hoogte_mm?: number;
+  verstek?: boolean;
+};
+
+export type VerstekRelatie = {
+  id: string;
+  bladA_id: string;
+  zijdeA_id: ZijdeId;
+  bladB_id: string;
+  zijdeB_id: ZijdeId;
+  hoek_graden: number;
+  notitie?: string;
 };
 
 export type AccessoireRegel = {

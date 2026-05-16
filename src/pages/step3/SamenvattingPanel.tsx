@@ -2,6 +2,7 @@ import { oppervlakteM2 } from "../../data/seed-types";
 import type { Opname } from "../../data/seed-types";
 import { bladZijden } from "../../drawing/bladZijdenHelpers";
 import { titleCase } from "../../drawing/titleCase";
+import { ongekoppeldeVerstekzijden } from "../../state/verstekHelpers";
 
 interface Props { state: Opname; }
 
@@ -101,6 +102,32 @@ export default function SamenvattingPanel({ state }: Props) {
     );
   }
 
+  // ── VERSTEK ────────────────────────────────────────────────
+  function renderVerstek() {
+    const totaalVerstekZijden = bladen.reduce((s, b) =>
+      s + (b.randafwerkingen ?? []).filter(ra => ra.verstek === true).length, 0
+    );
+    if (totaalVerstekZijden === 0) return null;
+
+    const ongekoppeld = ongekoppeldeVerstekzijden(state);
+    const gekoppeldAantal = totaalVerstekZijden - ongekoppeld.length;
+    const compleet = gekoppeldAantal === totaalVerstekZijden;
+
+    return (
+      <>
+        <Divider />
+        <p style={HDR}>VERSTEK</p>
+        <div style={{ fontSize: 11, marginTop: 2 }}>
+          {compleet ? (
+            <span style={{ color: "#0d9488" }}>✓ {gekoppeldAantal}/{totaalVerstekZijden} gekoppeld</span>
+          ) : (
+            <span style={{ color: "#d97706" }}>⚠ {gekoppeldAantal}/{totaalVerstekZijden} gekoppeld</span>
+          )}
+        </div>
+      </>
+    );
+  }
+
   // ── ACCESSOIRES ────────────────────────────────────────────
   function renderAccessoires() {
     const items = accessoires ?? [];
@@ -161,6 +188,9 @@ export default function SamenvattingPanel({ state }: Props) {
       ) : (
         renderAccessoires()
       )}
+
+      {/* VERSTEK — alleen tonen als er verstek-zijden zijn */}
+      {renderVerstek()}
     </aside>
   );
 }

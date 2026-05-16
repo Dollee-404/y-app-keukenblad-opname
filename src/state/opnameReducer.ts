@@ -1,6 +1,6 @@
 import seedRaw from "../data/seed-data.json";
 import { legeOpname } from "../data/seed-types";
-import type { SeedData, Opname, Adres, Blad, Sparing, Boorgat, MateriaalKeuze, Randafwerking, AccessoireRegel, ZijdeId } from "../data/seed-types";
+import type { SeedData, Opname, Adres, Blad, Sparing, Boorgat, MateriaalKeuze, Randafwerking, AccessoireRegel, ZijdeId, VerstekRelatie } from "../data/seed-types";
 
 const seed = seedRaw as unknown as SeedData;
 
@@ -111,7 +111,10 @@ export type OpnameAction =
   | { type: "RANDAFWERKING_VERWIJDEREN"; bladId: string; zijdeId: ZijdeId }
   | { type: "ACCESSOIRE_TOEVOEGEN"; regel: AccessoireRegel }
   | { type: "ACCESSOIRE_BIJWERKEN"; id: string; patch: Partial<AccessoireRegel> }
-  | { type: "ACCESSOIRE_VERWIJDEREN"; id: string };
+  | { type: "ACCESSOIRE_VERWIJDEREN"; id: string }
+  | { type: "VERSTEK_RELATIE_TOEVOEGEN"; relatie: VerstekRelatie }
+  | { type: "VERSTEK_RELATIE_VERWIJDEREN"; id: string }
+  | { type: "VERSTEK_RELATIE_BIJWERKEN"; id: string; patch: Partial<VerstekRelatie> };
 
 export function opnameReducer(state: Opname, action: OpnameAction): Opname {
   switch (action.type) {
@@ -194,7 +197,13 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
       return { ...state, bladen: [...state.bladen, action.blad] };
 
     case "BLAD_VERWIJDEREN":
-      return { ...state, bladen: state.bladen.filter((b) => b.id !== action.id) };
+      return {
+        ...state,
+        bladen: state.bladen.filter((b) => b.id !== action.id),
+        verstekRelaties: (state.verstekRelaties ?? []).filter(
+          (r) => r.bladA_id !== action.id && r.bladB_id !== action.id
+        ),
+      };
 
     case "BLAD_BIJWERKEN":
       return {
@@ -393,5 +402,41 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
 
     case "ACCESSOIRE_VERWIJDEREN":
       return { ...state, accessoires: state.accessoires.filter(a => a.id !== action.id) };
+
+    case "VERSTEK_RELATIE_TOEVOEGEN": {
+      const { relatie } = action;
+      const zetVerstek = (bladen: Blad[], bladId: string, zijdeId: ZijdeId): Blad[] =>
+        bladen.map(b => {
+          if (b.id !== bladId) return b;
+          const bestaande = (b.randafwerkingen ?? []).find(r => r.zijdeId === zijdeId);
+          const bijgewerkt: Randafwerking = bestaande
+            ? { ...bestaande, verstek: true }
+            : { zijdeId, code: "verstek", label: "Verstek (koppeling)", type: "VERSTEK", verstek: true };
+          const rest = (b.randafwerkingen ?? []).filter(r => r.zijdeId !== zijdeId);
+          return { ...b, randafwerkingen: [...rest, bijgewerkt] };
+        });
+
+      const bladenNaA = zetVerstek(state.bladen, relatie.bladA_id, relatie.zijdeA_id);
+      const bladenNaB = zetVerstek(bladenNaA, relatie.bladB_id, relatie.zijdeB_id);
+      return {
+        ...state,
+        bladen: bladenNaB,
+        verstekRelaties: [...(state.verstekRelaties ?? []), relatie],
+      };
+    }
+
+    case "VERSTEK_RELATIE_VERWIJDEREN":
+      return {
+        ...state,
+        verstekRelaties: (state.verstekRelaties ?? []).filter(r => r.id !== action.id),
+      };
+
+    case "VERSTEK_RELATIE_BIJWERKEN":
+      return {
+        ...state,
+        verstekRelaties: (state.verstekRelaties ?? []).map(r =>
+          r.id === action.id ? { ...r, ...action.patch } : r
+        ),
+      };
   }
 }

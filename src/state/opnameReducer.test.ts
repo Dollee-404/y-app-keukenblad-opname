@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { legeInitialState as initialState, opnameReducer } from "./opnameReducer";
-import type { MateriaalKeuze, Randafwerking, AccessoireRegel, Blad } from "../data/seed-types";
+import type { MateriaalKeuze, Randafwerking, AccessoireRegel, Blad, VerstekRelatie } from "../data/seed-types";
 
 describe("opnameReducer", () => {
   it("initial state heeft lege opname", () => {
@@ -219,5 +219,128 @@ describe("ACCESSOIRE_VERWIJDEREN", () => {
     const state = { ...initialState, accessoires: [regel] };
     const result = opnameReducer(state, { type: "ACCESSOIRE_VERWIJDEREN", id: "acc-1" });
     expect(result.accessoires).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// VERSTEK_RELATIE actions
+// ---------------------------------------------------------------------------
+
+function maakBlad(id: string): Blad {
+  return {
+    id,
+    label: id,
+    werkstukType: "Bladdeel A",
+    categorie: "WB",
+    lengte: 1000,
+    breedte: 600,
+    dikte: 20,
+    randen: [],
+  };
+}
+
+function maakRelatie(overrides?: Partial<VerstekRelatie>): VerstekRelatie {
+  return {
+    id: "rel-1",
+    bladA_id: "A",
+    zijdeA_id: "0",
+    bladB_id: "B",
+    zijdeB_id: "2",
+    hoek_graden: 45,
+    ...overrides,
+  };
+}
+
+describe("VERSTEK_RELATIE_TOEVOEGEN", () => {
+  it("voegt relatie toe en zet verstek=true op beide zijden (nieuwe randafwerkingen)", () => {
+    const state = { ...initialState, bladen: [maakBlad("A"), maakBlad("B")] };
+    const result = opnameReducer(state, {
+      type: "VERSTEK_RELATIE_TOEVOEGEN",
+      relatie: maakRelatie(),
+    });
+
+    expect(result.verstekRelaties).toHaveLength(1);
+    expect(result.verstekRelaties![0].id).toBe("rel-1");
+
+    const bladA = result.bladen.find(b => b.id === "A")!;
+    const zijdeA = (bladA.randafwerkingen ?? []).find(r => r.zijdeId === "0");
+    expect(zijdeA?.verstek).toBe(true);
+    expect(zijdeA?.code).toBe("verstek");
+
+    const bladB = result.bladen.find(b => b.id === "B")!;
+    const zijdeB = (bladB.randafwerkingen ?? []).find(r => r.zijdeId === "2");
+    expect(zijdeB?.verstek).toBe(true);
+  });
+
+  it("behoudt bestaande code (T1-EF) bij zet verstek=true", () => {
+    const bladA: Blad = {
+      ...maakBlad("A"),
+      randafwerkingen: [{ zijdeId: "0", code: "T1-EF", label: "T1 enkel facet", type: "FACET" }],
+    };
+    const state = { ...initialState, bladen: [bladA, maakBlad("B")] };
+    const result = opnameReducer(state, {
+      type: "VERSTEK_RELATIE_TOEVOEGEN",
+      relatie: maakRelatie(),
+    });
+
+    const zijdeA = (result.bladen.find(b => b.id === "A")!.randafwerkingen ?? []).find(r => r.zijdeId === "0");
+    expect(zijdeA?.code).toBe("T1-EF");
+    expect(zijdeA?.verstek).toBe(true);
+  });
+});
+
+describe("VERSTEK_RELATIE_VERWIJDEREN", () => {
+  it("verwijdert relatie maar behoudt verstek=true op beide zijden", () => {
+    const bladA: Blad = {
+      ...maakBlad("A"),
+      randafwerkingen: [{ zijdeId: "0", code: "verstek", label: "Verstek (koppeling)", type: "VERSTEK", verstek: true }],
+    };
+    const bladB: Blad = {
+      ...maakBlad("B"),
+      randafwerkingen: [{ zijdeId: "2", code: "verstek", label: "Verstek (koppeling)", type: "VERSTEK", verstek: true }],
+    };
+    const state = { ...initialState, bladen: [bladA, bladB], verstekRelaties: [maakRelatie()] };
+
+    const result = opnameReducer(state, { type: "VERSTEK_RELATIE_VERWIJDEREN", id: "rel-1" });
+
+    expect(result.verstekRelaties).toHaveLength(0);
+    const zijdeA = (result.bladen.find(b => b.id === "A")!.randafwerkingen ?? []).find(r => r.zijdeId === "0");
+    expect(zijdeA?.verstek).toBe(true);
+    const zijdeB = (result.bladen.find(b => b.id === "B")!.randafwerkingen ?? []).find(r => r.zijdeId === "2");
+    expect(zijdeB?.verstek).toBe(true);
+  });
+});
+
+describe("VERSTEK_RELATIE_BIJWERKEN", () => {
+  it("past alleen hoek_graden aan, rest blijft", () => {
+    const state = { ...initialState, bladen: [maakBlad("A"), maakBlad("B")], verstekRelaties: [maakRelatie()] };
+    const result = opnameReducer(state, {
+      type: "VERSTEK_RELATIE_BIJWERKEN",
+      id: "rel-1",
+      patch: { hoek_graden: 30 },
+    });
+
+    const rel = result.verstekRelaties![0];
+    expect(rel.hoek_graden).toBe(30);
+    expect(rel.bladA_id).toBe("A");
+    expect(rel.zijdeA_id).toBe("0");
+  });
+});
+
+describe("BLAD_VERWIJDEREN cascade-delete", () => {
+  it("verwijdert relaties die naar het verwijderde blad verwijzen, verstek=true blijft op overgebleven zijde", () => {
+    const bladA: Blad = {
+      ...maakBlad("A"),
+      randafwerkingen: [{ zijdeId: "0", code: "verstek", label: "Verstek (koppeling)", type: "VERSTEK", verstek: true }],
+    };
+    const state = { ...initialState, bladen: [bladA, maakBlad("B")], verstekRelaties: [maakRelatie()] };
+
+    const result = opnameReducer(state, { type: "BLAD_VERWIJDEREN", id: "B" });
+
+    expect(result.bladen).toHaveLength(1);
+    expect(result.verstekRelaties).toHaveLength(0);
+
+    const zijdeA = (result.bladen[0].randafwerkingen ?? []).find(r => r.zijdeId === "0");
+    expect(zijdeA?.verstek).toBe(true);
   });
 });

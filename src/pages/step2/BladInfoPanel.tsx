@@ -1,9 +1,12 @@
+import { useState } from "react";
 import seedRaw from "../../data/seed-data.json";
 import type { SeedData, Blad, Opname } from "../../data/seed-types";
 import { oppervlakteM2 } from "../../data/seed-types";
 import { rechthoekOutline, segmentLengtes } from "../../drawing/bladHelpers";
 import { randAfstand } from "../../drawing/boorgatHelpers";
 import { effectiefMateriaalSoort } from "../../state/helpers";
+import { relatiesVoorBlad } from "../../state/verstekHelpers";
+import { bladZijden } from "../../drawing/bladZijdenHelpers";
 
 const seed = seedRaw as unknown as SeedData;
 
@@ -20,6 +23,8 @@ interface Props {
   blad: Blad | null;
   state: Opname;
   onBoorgatToevoegen?: () => void;
+  onVerstekToevoegen?: () => void;
+  onVerstekVerwijderen?: (id: string) => void;
 }
 
 function omtrekMm(blad: Blad): number {
@@ -27,7 +32,9 @@ function omtrekMm(blad: Blad): number {
   return Math.round(segmentLengtes(outline).reduce((s, l) => s + l, 0));
 }
 
-export default function BladInfoPanel({ blad, state, onBoorgatToevoegen }: Props) {
+export default function BladInfoPanel({ blad, state, onBoorgatToevoegen, onVerstekToevoegen, onVerstekVerwijderen }: Props) {
+  const [hoveredRelatieId, setHoveredRelatieId] = useState<string | null>(null);
+  const verstekRelaties = blad ? relatiesVoorBlad(state, blad.id) : [];
   const matSoort = blad ? effectiefMateriaalSoort(blad, state) : "—";
   const dikte = blad?.materiaalKeuze?.dikte_mm ?? blad?.dikte ?? "—";
   const kleur = blad?.materiaalOverride?.kleur ?? state.materiaal?.kleur ?? "—";
@@ -179,6 +186,87 @@ export default function BladInfoPanel({ blad, state, onBoorgatToevoegen }: Props
             }}
           >
             + Boorgat toevoegen
+          </button>
+        )}
+      </div>
+
+      {/* Footer: Verstek-relaties */}
+      <div style={{ padding: "10px 14px", borderTop: "0.5px solid rgba(0,0,0,0.08)" }}>
+        <div style={{ ...labelStyle, marginBottom: 6 }}>Verstek-relaties</div>
+        {verstekRelaties.length === 0 ? (
+          <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6 }}>Geen verstek-relaties</p>
+        ) : (
+          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6, marginBottom: 6 }}>
+            {verstekRelaties.map(r => {
+              const isA = r.bladA_id === blad!.id;
+              const eigenZijdeId = isA ? r.zijdeA_id : r.zijdeB_id;
+              const anderBladId = isA ? r.bladB_id : r.bladA_id;
+              const anderZijdeId = isA ? r.zijdeB_id : r.zijdeA_id;
+
+              const eigenZijdeLabel = bladZijden(blad!).find(z => z.id === eigenZijdeId)?.label ?? eigenZijdeId;
+              const anderBlad = state.bladen.find(b => b.id === anderBladId);
+              const anderZijdeLabel = anderBlad
+                ? (bladZijden(anderBlad).find(z => z.id === anderZijdeId)?.label ?? anderZijdeId)
+                : anderZijdeId;
+              const hovered = hoveredRelatieId === r.id;
+
+              return (
+                <li
+                  key={r.id}
+                  onMouseEnter={() => setHoveredRelatieId(r.id)}
+                  onMouseLeave={() => setHoveredRelatieId(null)}
+                  style={{ display: "flex", alignItems: "flex-start", gap: 4 }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: "#0f172a", lineHeight: 1.4 }}>
+                      {eigenZijdeLabel} ↔ {anderBlad?.label ?? anderBladId} · {anderZijdeLabel}
+                    </div>
+                    {r.hoek_graden !== 45 && (
+                      <div style={{ fontSize: 10, color: "#64748b" }}>hoek {r.hoek_graden}°</div>
+                    )}
+                    {r.notitie && (
+                      <div style={{ fontSize: 10, color: "#94a3b8", wordBreak: "break-word" }}>{r.notitie}</div>
+                    )}
+                  </div>
+                  {onVerstekVerwijderen && (
+                    <button
+                      onClick={() => onVerstekVerwijderen(r.id)}
+                      style={{
+                        flexShrink: 0,
+                        background: "none",
+                        border: "none",
+                        padding: "1px 3px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                        color: hovered ? "#ef4444" : "transparent",
+                        lineHeight: 1,
+                        borderRadius: 3,
+                        transition: "color 0.1s",
+                      }}
+                      title="Verwijder relatie"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {onVerstekToevoegen && (
+          <button
+            onClick={onVerstekToevoegen}
+            disabled={!blad}
+            style={{
+              width: "100%", padding: "5px 0", fontSize: 11,
+              border: "0.5px solid #0d9488", borderRadius: 5,
+              background: blad ? "#f0fdfa" : "white",
+              color: blad ? "#0d9488" : "#94a3b8",
+              cursor: blad ? "pointer" : "not-allowed",
+              opacity: blad ? 1 : 0.4,
+            }}
+          >
+            + Verstek-relatie toevoegen
           </button>
         )}
       </div>
