@@ -190,3 +190,16 @@ Dat heeft drie consequenties:
   per leverancier. Bron: leverancier-websites (Quartzforms, Dekton,
   Caesarstone, etc.). Na verzameling: kleurstalen activeren in
   MateriaalSectie UI.
+
+## Toekomstige features (sprint 11 of polish-sprint)
+
+- **Bladstap/rabat-feature** — fysieke stap in blad-onderzijde voor
+  verstek-aansluiting (Vasto-conventie). Datamodel uitbreiden met
+  `blad.stappen[]` (positie, diepte, lengte). UI in stap 2 voor
+  invoer. Canvas + PDF rendering met arcering (zoals Vasto pagina 1:
+  "5" met schuine streep op rechterrand).
+
+  Voorbeeld uit Vasto order 2600376 pagina 1: stap begint op
+  x=1861mm vanaf linkerrand, 5mm diep, loopt door tot rechterrand.
+  Geeft de tekenaar zaag-instructie voor verstek-aansluiting met
+  ander blad.
