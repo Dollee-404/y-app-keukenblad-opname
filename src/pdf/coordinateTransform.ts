@@ -67,3 +67,40 @@ export function outlineToPdf(point: Point, viewport: PdfViewport): Point {
     y: viewport.drawingAreaY + point.y * viewport.scaleFactor,
   };
 }
+
+// ── Landschap-layout (A4, 297×210mm) ────────────────────────────────────────
+const PAGE_W_L      = 297;
+const PAGE_H_L      = 210;
+const MARGIN_X_L    = 12;
+const HEADER_H_L    = 22;
+const FOOTER_H_L    = 42;
+const LABEL_MARGE_L = 49;  // BG_H_OFFSET(29)+2×BG_H_STACK(14)+ARROW_H(1)+marge(5)=49
+
+const ZONE_W_L = PAGE_W_L - 2 * MARGIN_X_L;           // 273mm
+const ZONE_H_L = PAGE_H_L - HEADER_H_L - FOOTER_H_L;  // 146mm
+
+/** Gebruik landschap voor bladen waarbij lengte meer dan 1.3× de breedte is. */
+export function detectOrientation(blad: Blad): 'portrait' | 'landscape' {
+  return blad.lengte > blad.breedte * 1.3 ? 'landscape' : 'portrait';
+}
+
+/** Viewport voor A4 liggend: maximale tekenzone met 35mm labelmarge per kant. */
+export function computeViewportLandscape(blad: Blad): PdfViewport {
+  const maxBladW = ZONE_W_L - 2 * LABEL_MARGE_L;  // 203mm
+  const maxBladH = ZONE_H_L - 2 * LABEL_MARGE_L;  // 76mm
+
+  const scaleFactor = Math.min(maxBladW / blad.lengte, maxBladH / blad.breedte);
+
+  const bladW = blad.lengte * scaleFactor;
+  const bladH = blad.breedte * scaleFactor;
+
+  return {
+    pageWidthMm:       PAGE_W_L,
+    pageHeightMm:      PAGE_H_L,
+    drawingAreaX:      MARGIN_X_L + (ZONE_W_L - bladW) / 2,
+    drawingAreaY:      HEADER_H_L + (ZONE_H_L - bladH) / 2,
+    drawingAreaWidth:  bladW,
+    drawingAreaHeight: bladH,
+    scaleFactor,
+  };
+}
