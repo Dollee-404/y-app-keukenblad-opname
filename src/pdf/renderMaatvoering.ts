@@ -306,9 +306,8 @@ export function renderUithapMaten(doc: jsPDF, blad: Blad, viewport: PdfViewport)
     const lenBefore = Math.round(Math.hypot(prev.x - prevPrev.x, prev.y - prevPrev.y));
     const lenAfter  = Math.round(Math.hypot(nextNext.x - next.x, nextNext.y - next.y));
 
-    const pPrev   = outlineToPdf(prev, viewport);
-    const pCorner = outlineToPdf(curr, viewport);
-    const pNext   = outlineToPdf(next, viewport);
+    const pPrev = outlineToPdf(prev, viewport);
+    const pNext = outlineToPdf(next, viewport);
 
     const xNotch  = pPrev.x;   // = pCorner.x: x-positie notch-wand
     const yFloor  = pNext.y;   // = pCorner.y: y-positie notch-vloer
