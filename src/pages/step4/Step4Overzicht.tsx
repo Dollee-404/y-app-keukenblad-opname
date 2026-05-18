@@ -13,6 +13,48 @@ interface Props {
 
 export default function Step4Overzicht({ state, onNavigeer }: Props) {
   const [conceptSaved, setConceptSaved] = useState<string | null>(null);
+  const [busy, setBusy] = useState<null | 'werkplaats' | 'zaagbrief'>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  const geenBladen = state.bladen.length === 0;
+
+  function maakFilenaam(type: string): string {
+    const datum = new Date().toISOString().slice(0, 10);
+    const nr = state.ordernummer ?? 'concept';
+    return `${type}-${nr}-${datum}.pdf`;
+  }
+
+  async function handleDownloadWerkplaatstekening() {
+    setBusy('werkplaats');
+    setFout(null);
+    try {
+      const { genereerWerkplaatstekening } = await import('../../pdf/index');
+      const { downloadBlob } = await import('../../utils/downloadBlob');
+      const blob = genereerWerkplaatstekening(state);
+      downloadBlob(blob, maakFilenaam('werkplaatstekening'));
+    } catch (err) {
+      console.error(err);
+      setFout('Werkplaatstekening genereren mislukt: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleDownloadZaagbrief() {
+    setBusy('zaagbrief');
+    setFout(null);
+    try {
+      const { genereerZaagbrief } = await import('../../pdf/index');
+      const { downloadBlob } = await import('../../utils/downloadBlob');
+      const blob = genereerZaagbrief(state);
+      downloadBlob(blob, maakFilenaam('zaagbrief'));
+    } catch (err) {
+      console.error(err);
+      setFout('Zaagbrief genereren mislukt: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   function handleSaveConcept() {
     const key = saveConcept(state);
@@ -173,7 +215,59 @@ export default function Step4Overzicht({ state, onNavigeer }: Props) {
         )}
       </section>
 
-      {/* Zone 5 — Acties */}
+      {/* Zone 5 — PDF downloads */}
+      {fout && (
+        <div style={{
+          background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8,
+          padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#991b1b",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <span>{fout}</span>
+          <button
+            onClick={() => setFout(null)}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#991b1b", lineHeight: 1, padding: "0 0 0 12px" }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+      <section style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 12 }}>
+          <button
+            onClick={handleDownloadWerkplaatstekening}
+            disabled={geenBladen || busy === 'werkplaats'}
+            title={geenBladen ? "Voeg eerst een blad toe in stap 2" : undefined}
+            style={{
+              padding: "9px 18px", fontSize: 14, border: "none", borderRadius: 7,
+              background: geenBladen ? "#94a3b8" : "#0d9488",
+              color: "white", cursor: geenBladen ? "not-allowed" : "pointer",
+              fontWeight: 500, opacity: busy === 'werkplaats' ? 0.7 : 1,
+              minWidth: 180,
+            }}
+          >
+            {busy === 'werkplaats' ? 'Bezig…' : 'Werkplaatstekening'}
+          </button>
+          <button
+            onClick={handleDownloadZaagbrief}
+            disabled={geenBladen || busy === 'zaagbrief'}
+            title={geenBladen ? "Voeg eerst een blad toe in stap 2" : undefined}
+            style={{
+              padding: "9px 18px", fontSize: 14, border: "none", borderRadius: 7,
+              background: geenBladen ? "#94a3b8" : "#0d9488",
+              color: "white", cursor: geenBladen ? "not-allowed" : "pointer",
+              fontWeight: 500, opacity: busy === 'zaagbrief' ? 0.7 : 1,
+              minWidth: 140,
+            }}
+          >
+            {busy === 'zaagbrief' ? 'Bezig…' : 'Zaagbrief'}
+          </button>
+        </div>
+        <p style={{ fontSize: 12, color: "#94a3b8", margin: "8px 0 0" }}>
+          Beide PDFs worden lokaal gedownload. Verzenden naar ERPNext volgt in een latere stap.
+        </p>
+      </section>
+
+      {/* Zone 6 — Acties */}
       <footer style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button
           onClick={() => window.print()}
