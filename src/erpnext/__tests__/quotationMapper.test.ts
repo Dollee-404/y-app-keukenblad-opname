@@ -1,0 +1,163 @@
+import { describe, it, expect } from 'vitest';
+import { opnameNaarQuotation, bouwBladDescription, omschrijfRandafwerking, omschrijfSparingen } from '../quotationMapper.js';
+import { maakRechthoekOpname, maakLVormOpname, maakMultiBladOpname, maakLegeOpname } from '../../pdf/__tests__/fixtures.js';
+import type { Opname } from '../../data/seed-types.js';
+
+function metKlant(opname: Opname): Opname {
+  return {
+    ...opname,
+    opdrachtgever: { naam: 'Jansen Keukens B.V.', straat: 'Testlaan 1', postcodePlaats: '1234 AB Teststad' },
+  } as unknown as Opname;
+}
+
+describe('opnameNaarQuotation', () => {
+  it('happy path — 3 bladen geeft 3 items', () => {
+    const payload = opnameNaarQuotation(metKlant(maakMultiBladOpname()));
+    expect(payload.items).toHaveLength(3);
+  });
+
+  it('quotation_to is altijd Customer', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    expect(payload.quotation_to).toBe('Customer');
+  });
+
+  it('party_name is de klantnaam', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    expect(payload.party_name).toBe('Jansen Keukens B.V.');
+  });
+
+  it('transaction_date is vandaag in YYYY-MM-DD formaat', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    expect(payload.transaction_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('kbf_opname is altijd 1', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    expect(payload.kbf_opname).toBe(1);
+  });
+
+  it('kbf_meetdatum komt uit opname.datum', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    expect(payload.kbf_meetdatum).toBe('2026-05-18');
+  });
+
+  it('kbf_opname_json is geldige JSON die de originele opname teruggeeft', () => {
+    const opname = metKlant(maakRechthoekOpname());
+    const payload = opnameNaarQuotation(opname);
+    const parsed = JSON.parse(payload.kbf_opname_json);
+    expect(parsed.ordernummer).toBe(opname.ordernummer);
+    expect(parsed.bladen).toHaveLength(opname.bladen.length);
+  });
+
+  it('kale opname met klant werkt zonder errors', () => {
+    expect(() => opnameNaarQuotation(metKlant(maakRechthoekOpname()))).not.toThrow();
+  });
+
+  it('throws zonder klant', () => {
+    const opname = { ...maakRechthoekOpname(), opdrachtgever: { naam: '', straat: '', postcodePlaats: '' } } as unknown as Opname;
+    expect(() => opnameNaarQuotation(opname)).toThrow('Klant moet geselecteerd zijn');
+  });
+
+  it('throws zonder bladen', () => {
+    expect(() => opnameNaarQuotation(metKlant(maakLegeOpname()))).toThrow('Opname heeft geen bladen');
+  });
+});
+
+describe('QuotationItem per blad', () => {
+  it('item_code is AANRECHTBLAD', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    expect(payload.items[0].item_code).toBe('AANRECHTBLAD');
+  });
+
+  it('item_name bevat kleur en afmetingen', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    expect(payload.items[0].item_name).toContain('Glencoe');
+    expect(payload.items[0].item_name).toContain('1958');
+  });
+
+  it('rate is altijd 0', () => {
+    const payload = opnameNaarQuotation(metKlant(maakMultiBladOpname()));
+    for (const item of payload.items) expect(item.rate).toBe(0);
+  });
+
+  it('qty is 1 per blad', () => {
+    const payload = opnameNaarQuotation(metKlant(maakMultiBladOpname()));
+    for (const item of payload.items) expect(item.qty).toBe(1);
+  });
+
+  it('L-vorm blad — description bevat "(L-vorm)"', () => {
+    const payload = opnameNaarQuotation(metKlant(maakLVormOpname()));
+    expect(payload.items[0].description).toContain('L-vorm');
+  });
+});
+
+describe('bouwBladDescription', () => {
+  it('regels staan in vaste volgorde: Materiaal, Afmetingen, Randafwerking', () => {
+    const opname = metKlant(maakRechthoekOpname());
+    const desc = bouwBladDescription(opname.bladen[0], opname);
+    const regels = desc.split('\n');
+    expect(regels[0]).toMatch(/^Materiaal:/);
+    expect(regels[1]).toMatch(/^Afmetingen:/);
+    expect(regels[2]).toMatch(/^Randafwerking:/);
+  });
+
+  it('description bevat bladafmetingen', () => {
+    const opname = metKlant(maakRechthoekOpname());
+    const desc = bouwBladDescription(opname.bladen[0], opname);
+    expect(desc).toContain('1958');
+    expect(desc).toContain('1001');
+  });
+
+  it('blad zonder randafwerking toont "(niet opgegeven)"', () => {
+    const opname = metKlant(maakRechthoekOpname());
+    const bladZonderRA = { ...opname.bladen[0], randafwerkingen: [] };
+    const desc = bouwBladDescription(bladZonderRA, opname);
+    expect(desc).toContain('(niet opgegeven)');
+  });
+
+  it('blad met kookplaat-sparing toont sparing in description', () => {
+    const opname = metKlant(maakRechthoekOpname());
+    const bladMetSparing = {
+      ...opname.bladen[0],
+      sparingen: [{
+        id: 'sp-1', type: 'KOOKPLAAT' as const, bladId: opname.bladen[0].id,
+        inbouwwijze: 'VLAKBOUW' as const, productMerk: 'Bora', productModel: 'C75',
+        positie: { x: 900, y: 500 }, breedte: 760, hoogte: 460,
+      }],
+    };
+    const desc = bouwBladDescription(bladMetSparing, opname);
+    expect(desc).toContain('Bora C75');
+    expect(desc).toContain('Sparingen:');
+  });
+
+  it('blad zonder sparingen toont geen "Sparingen:"-regel', () => {
+    const opname = metKlant(maakRechthoekOpname());
+    const bladZonderSp = { ...opname.bladen[0], sparingen: [] };
+    const desc = bouwBladDescription(bladZonderSp, opname);
+    expect(desc).not.toContain('Sparingen:');
+  });
+});
+
+describe('omschrijfRandafwerking', () => {
+  it('groepeert identieke codes — vier DV40 geeft één "DV40"', () => {
+    const blad = maakRechthoekOpname().bladen[0];
+    const result = omschrijfRandafwerking(blad);
+    expect(result).toContain('DV40');
+    expect(result.split('DV40').length).toBe(2);
+  });
+
+  it('toont verstek-suffix bij verstek=true', () => {
+    const blad = {
+      ...maakRechthoekOpname().bladen[0],
+      randafwerkingen: [{ zijdeId: '0', code: 'DV40', label: 'DV40', type: 'VERSTEK' as const, verstek: true }],
+    };
+    expect(omschrijfRandafwerking(blad)).toContain('verstek');
+  });
+});
+
+describe('omschrijfSparingen', () => {
+  it('lege sparingen geeft lege string', () => {
+    const blad = { ...maakRechthoekOpname().bladen[0], sparingen: [] };
+    expect(omschrijfSparingen(blad)).toBe('');
+  });
+});
