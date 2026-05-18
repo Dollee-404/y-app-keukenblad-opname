@@ -313,6 +313,8 @@ export type Blad = {
   materiaalKeuze?: MateriaalKeuze;     // sprint-4 per-blad materiaal override
   randafwerkingen?: Randafwerking[];   // sprint-4 per-zijde randafwerking
   materiaalcodeOverride?: string;      // bv "20DV40" — automatische afleiding volgt later
+  // Werkplaats-PDF altijd portrait (Vasto-conventie). Override hier voor uitzonderingen.
+  orientation?: 'portrait' | 'landscape';
 
   // geometrie (alleen invullen als niet-rechthoekig)
   outline?: Point[];                      // polygoon in lokale mm-coords (0,0 = linksonder)
