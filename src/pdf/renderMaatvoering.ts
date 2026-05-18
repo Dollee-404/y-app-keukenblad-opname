@@ -34,18 +34,18 @@ const RA_LINE_H = 3;      // mm regelafstand bij verstek-suffix
 export function renderBuitenmaten(doc: jsPDF, blad: Blad, viewport: PdfViewport): void {
   const { drawingAreaX: x0, drawingAreaY: y0, drawingAreaWidth: bW, drawingAreaHeight: bH } = viewport;
 
-  // ── Lengte boven blad ──────────────────────────────────────────────────────
-  const yMaat = y0 - MAAT_OFFSET;
+  // ── Lengte onder blad ──────────────────────────────────────────────────────
+  const yMaat = y0 + bH + MAAT_OFFSET;
 
-  drawHulplijn(doc, x0, y0 - HULP_GAP, x0, yMaat - HULP_PAST);
-  drawHulplijn(doc, x0 + bW, y0 - HULP_GAP, x0 + bW, yMaat - HULP_PAST);
+  drawHulplijn(doc, x0, y0 + bH, x0, yMaat + HULP_PAST);
+  drawHulplijn(doc, x0 + bW, y0 + bH, x0 + bW, yMaat + HULP_PAST);
   drawMaatlijn(doc, x0, yMaat, x0 + bW, yMaat, `${blad.lengte}`, 'horizontal');
 
   // ── Breedte links blad ─────────────────────────────────────────────────────
   const xMaat = x0 - MAAT_OFFSET;
 
-  drawHulplijn(doc, x0 - HULP_GAP, y0, xMaat - HULP_PAST, y0);
-  drawHulplijn(doc, x0 - HULP_GAP, y0 + bH, xMaat - HULP_PAST, y0 + bH);
+  drawHulplijn(doc, x0, y0, xMaat - HULP_PAST, y0);
+  drawHulplijn(doc, x0, y0 + bH, xMaat - HULP_PAST, y0 + bH);
   drawMaatlijn(doc, xMaat, y0, xMaat, y0 + bH, `${blad.breedte}`, 'vertical');
 }
 
@@ -270,6 +270,72 @@ export function renderVerstekLabels(
     } else {
       doc.text(tekst, lx, ly, { align: 'center' });
     }
+  }
+}
+
+/**
+ * Tekent uithap-maten voor L-vormige bladen:
+ *   - Horizontale deelmaten ONDER het blad (breedte vóór uithap + uithap-breedte)
+ *   - Verticale deelmaten RECHTS van het blad (uithap-diepte + hoogte lage deel)
+ * Alle labels buiten de blad-contour. Werkt per binnenhoek (z<0).
+ */
+export function renderUithapMaten(doc: jsPDF, blad: Blad, viewport: PdfViewport): void {
+  const outline = blad.outline;
+  if (!outline || outline.length <= 4) return;
+
+  const n = outline.length;
+  const SEG_OFFSET = 8;  // mm van bladrand naar deelmaat-lijn
+  const { drawingAreaX: x0, drawingAreaY: y0, drawingAreaWidth: bW, drawingAreaHeight: bH } = viewport;
+
+  for (let ic = 0; ic < n; ic++) {
+    const prev = outline[(ic - 1 + n) % n];
+    const curr = outline[ic];
+    const next = outline[(ic + 1) % n];
+
+    const lenIn  = Math.hypot(curr.x - prev.x, curr.y - prev.y);
+    const lenOut = Math.hypot(next.x - curr.x, next.y - curr.y);
+    if (lenIn < 1 || lenOut < 1) continue;
+
+    const v_in  = { x: (curr.x - prev.x) / lenIn,  y: (curr.y - prev.y) / lenIn  };
+    const v_out = { x: (next.x - curr.x) / lenOut, y: (next.y - curr.y) / lenOut };
+    const z = v_in.x * v_out.y - v_in.y * v_out.x;
+    if (z >= 0) continue;
+
+    const prevPrev = outline[(ic - 2 + n) % n];
+    const nextNext = outline[(ic + 2) % n];
+    const lenBefore = Math.round(Math.hypot(prev.x - prevPrev.x, prev.y - prevPrev.y));
+    const lenAfter  = Math.round(Math.hypot(nextNext.x - next.x, nextNext.y - next.y));
+
+    const pPrev   = outlineToPdf(prev, viewport);
+    const pCorner = outlineToPdf(curr, viewport);
+    const pNext   = outlineToPdf(next, viewport);
+
+    const xNotch  = pPrev.x;   // = pCorner.x: x-positie notch-wand
+    const yFloor  = pNext.y;   // = pCorner.y: y-positie notch-vloer
+    const xRight  = x0 + bW;
+    const yBottom = y0 + bH;
+
+    // ── Horizontale deelmaten boven het blad ───────────────────────────────
+    const yMaatH = y0 - SEG_OFFSET;
+
+    // Extension-lines: vertikaal omhoog vanuit de bovenkant-hoekpunten
+    drawHulplijn(doc, x0,     y0,      x0,     yMaatH - HULP_PAST);
+    drawHulplijn(doc, xNotch, pPrev.y, xNotch, yMaatH - HULP_PAST);
+    drawMaatlijn(doc, x0, yMaatH, xNotch, yMaatH, `${lenBefore}`, 'horizontal');
+
+    // xRight: extension-line start op bladrand (y0), niet door de uithap-opening
+    drawHulplijn(doc, xRight, y0,  xRight, yMaatH - HULP_PAST);
+    drawMaatlijn(doc, xNotch, yMaatH, xRight, yMaatH, `${Math.round(lenOut)}`, 'horizontal');
+
+    // ── Verticale deelmaten rechts van het blad ────────────────────────────
+    const xMaatV = xRight + SEG_OFFSET;
+
+    drawHulplijn(doc, xRight, y0,     xMaatV + HULP_PAST, y0);
+    drawHulplijn(doc, xRight, yFloor, xMaatV + HULP_PAST, yFloor);
+    drawMaatlijn(doc, xMaatV, y0, xMaatV, yFloor, `${Math.round(lenIn)}`, 'vertical');
+
+    drawHulplijn(doc, xRight, yBottom, xMaatV + HULP_PAST, yBottom);
+    drawMaatlijn(doc, xMaatV, yFloor, xMaatV, yBottom, `${lenAfter}`, 'vertical');
   }
 }
 

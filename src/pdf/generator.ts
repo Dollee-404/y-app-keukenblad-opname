@@ -11,6 +11,7 @@ import { renderSparingen } from './renderSparingen';
 import { renderBoorgaten } from './renderBoorgaten';
 import {
   renderBuitenmaten,
+  renderUithapMaten,
   renderSparingMaten,
   renderBoorgatMaten,
   renderRandafwerkingLabels,
@@ -50,6 +51,7 @@ export function genereerWerkplaatstekening(
     renderSparingen(doc, blad, vp, bladSparingen);
     renderBoorgaten(doc, blad, vp, boorgaten);
     renderBuitenmaten(doc, blad, vp);
+    renderUithapMaten(doc, blad, vp);
     renderSparingMaten(doc, blad, vp, bladSparingen);
     renderBoorgatMaten(doc, boorgaten, blad, vp);
     renderRandafwerkingLabels(doc, blad, vp);
