@@ -295,6 +295,9 @@ export type Opname = {
   // VRIJ TEKSTVELD
   bijzonderheden: string;
   geactiveerdeClausules: string[];       // keys uit seed.clausules
+
+  // ERPNEXT
+  quotationName?: string;               // bv "SAL-QTN-2026-0001" na eerste verzending
 };
 
 export type Blad = {

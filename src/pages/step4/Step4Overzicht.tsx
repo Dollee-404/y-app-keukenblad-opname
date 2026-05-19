@@ -3,6 +3,8 @@ import type { Opname } from "../../data/seed-types";
 import type { OpnameAction } from "../../state/opnameReducer";
 import { totaalM2, totaalAccessoires, globaleWaarschuwingen } from "../../state/helpers";
 import { saveConcept } from "../../state/conceptStorage";
+import { opnameNaarQuotation } from "../../erpnext/quotationMapper";
+import * as bridge from "../../bridge";
 import BladKaart from "./BladKaart";
 
 interface Props {
@@ -11,10 +13,11 @@ interface Props {
   onNavigeer: (stap: number, bladId?: string, subSection?: string) => void;
 }
 
-export default function Step4Overzicht({ state, onNavigeer }: Props) {
+export default function Step4Overzicht({ state, dispatch, onNavigeer }: Props) {
   const [conceptSaved, setConceptSaved] = useState<string | null>(null);
-  const [busy, setBusy] = useState<null | 'werkplaats' | 'zaagbrief'>(null);
+  const [busy, setBusy] = useState<null | 'werkplaats' | 'zaagbrief' | 'erpnext'>(null);
   const [fout, setFout] = useState<string | null>(null);
+  const [succes, setSucces] = useState<{ naam: string; url: string } | null>(null);
 
   const geenBladen = state.bladen.length === 0;
 
@@ -51,6 +54,36 @@ export default function Step4Overzicht({ state, onNavigeer }: Props) {
     } catch (err) {
       console.error(err);
       setFout('Zaagbrief genereren mislukt: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleVerzendNaarERPNext() {
+    setBusy('erpnext');
+    setFout(null);
+    setSucces(null);
+    try {
+      const payload = opnameNaarQuotation(state);
+      const erpUrl = bridge.getErpNextAppUrl();
+
+      if (state.quotationName) {
+        await bridge.updateDocument('Quotation', state.quotationName, payload as unknown as Record<string, unknown>);
+        setSucces({
+          naam: state.quotationName,
+          url: `${erpUrl}/app/quotation/${state.quotationName}`,
+        });
+      } else {
+        const result = await bridge.createDocument<{ name: string }>('Quotation', payload as unknown as Record<string, unknown>);
+        dispatch({ type: 'SET_QUOTATION_NAME', name: result.name });
+        setSucces({
+          naam: result.name,
+          url: `${erpUrl}/app/quotation/${result.name}`,
+        });
+      }
+    } catch (err) {
+      console.error('[erpnext-verzenden]', err);
+      setFout('Verzenden mislukt: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setBusy(null);
     }
@@ -215,7 +248,32 @@ export default function Step4Overzicht({ state, onNavigeer }: Props) {
         )}
       </section>
 
-      {/* Zone 5 — PDF downloads */}
+      {/* Succes-toast ERPNext */}
+      {succes && (
+        <div
+          onClick={() => window.open(succes.url, '_blank')}
+          style={{
+            background: "#dcfce7", border: "1px solid #86efac", borderRadius: 8,
+            padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#166534",
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            cursor: "pointer",
+          }}
+        >
+          <span>
+            {state.quotationName
+              ? `Quotation ${succes.naam} bijgewerkt in ERPNext — klik om te openen`
+              : `Quotation ${succes.naam} aangemaakt in ERPNext — klik om te openen`}
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); setSucces(null); }}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#166534", lineHeight: 1, padding: "0 0 0 12px" }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Fout-toast */}
       {fout && (
         <div style={{
           background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8,
@@ -231,73 +289,92 @@ export default function Step4Overzicht({ state, onNavigeer }: Props) {
           </button>
         </div>
       )}
-      <section style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 12 }}>
-          <button
-            onClick={handleDownloadWerkplaatstekening}
-            disabled={geenBladen || busy === 'werkplaats'}
-            title={geenBladen ? "Voeg eerst een blad toe in stap 2" : undefined}
-            style={{
-              padding: "9px 18px", fontSize: 14, border: "none", borderRadius: 7,
-              background: geenBladen ? "#94a3b8" : "#0d9488",
-              color: "white", cursor: geenBladen ? "not-allowed" : "pointer",
-              fontWeight: 500, opacity: busy === 'werkplaats' ? 0.7 : 1,
-              minWidth: 180,
-            }}
-          >
-            {busy === 'werkplaats' ? 'Bezig…' : 'Werkplaatstekening'}
-          </button>
-          <button
-            onClick={handleDownloadZaagbrief}
-            disabled={geenBladen || busy === 'zaagbrief'}
-            title={geenBladen ? "Voeg eerst een blad toe in stap 2" : undefined}
-            style={{
-              padding: "9px 18px", fontSize: 14, border: "none", borderRadius: 7,
-              background: geenBladen ? "#94a3b8" : "#0d9488",
-              color: "white", cursor: geenBladen ? "not-allowed" : "pointer",
-              fontWeight: 500, opacity: busy === 'zaagbrief' ? 0.7 : 1,
-              minWidth: 140,
-            }}
-          >
-            {busy === 'zaagbrief' ? 'Bezig…' : 'Zaagbrief'}
-          </button>
-        </div>
-        <p style={{ fontSize: 12, color: "#94a3b8", margin: "8px 0 0" }}>
-          Beide PDFs worden lokaal gedownload. Verzenden naar ERPNext volgt in een latere stap.
-        </p>
-      </section>
-
-      {/* Zone 6 — Acties */}
-      <footer style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      {/* Zone 5+6 — Actie-footer: één rij rechts uitgelijnd */}
+      <footer style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap", alignItems: "center" }}>
+        {/* Tertiary: PDF-output knoppen */}
         <button
-          onClick={() => window.print()}
+          onClick={handleDownloadWerkplaatstekening}
+          disabled={geenBladen || busy !== null}
+          title={geenBladen ? "Voeg eerst een blad toe in stap 2" : undefined}
           style={{
-            padding: "9px 18px",
-            fontSize: 14,
-            border: "1px solid #cbd5e1",
-            borderRadius: 7,
-            background: "white",
-            color: "#334155",
-            cursor: "pointer",
+            padding: "9px 16px", fontSize: 14, borderRadius: 7,
+            border: `1px solid ${geenBladen ? "#cbd5e1" : "#94a3b8"}`,
+            background: "transparent",
+            color: geenBladen ? "#cbd5e1" : "#64748b",
+            cursor: geenBladen ? "not-allowed" : "pointer",
+            fontWeight: 500, opacity: busy === 'werkplaats' ? 0.6 : 1,
           }}
         >
-          Print preview
+          {busy === 'werkplaats' ? 'Bezig…' : 'Werkplaatstekening'}
         </button>
         <button
-          onClick={handleSaveConcept}
+          onClick={handleDownloadZaagbrief}
+          disabled={geenBladen || busy !== null}
+          title={geenBladen ? "Voeg eerst een blad toe in stap 2" : undefined}
           style={{
-            padding: "9px 18px",
-            fontSize: 14,
-            border: "none",
-            borderRadius: 7,
-            background: "#0d9488",
-            color: "white",
-            cursor: "pointer",
+            padding: "9px 16px", fontSize: 14, borderRadius: 7,
+            border: `1px solid ${geenBladen ? "#cbd5e1" : "#94a3b8"}`,
+            background: "transparent",
+            color: geenBladen ? "#cbd5e1" : "#64748b",
+            cursor: geenBladen ? "not-allowed" : "pointer",
+            fontWeight: 500, opacity: busy === 'zaagbrief' ? 0.6 : 1,
+          }}
+        >
+          {busy === 'zaagbrief' ? 'Bezig…' : 'Zaagbrief'}
+        </button>
+
+        {/* Visuele scheiding */}
+        <div style={{ width: 12 }} />
+
+        {/* Secondary: Concept opslaan */}
+        <button
+          onClick={handleSaveConcept}
+          disabled={busy !== null}
+          style={{
+            padding: "9px 16px", fontSize: 14, borderRadius: 7,
+            border: "1px solid #5eead4",
+            background: "#f0fdfa",
+            color: "#0f766e",
+            cursor: busy !== null ? "not-allowed" : "pointer",
             fontWeight: 500,
           }}
         >
           Concept opslaan
         </button>
+
+        {/* Primary: Verzenden naar ERPNext */}
+        {(() => {
+          const geenKlant = !state.opdrachtgever?.naam;
+          const erpDisabled = geenKlant || geenBladen || busy !== null;
+          const erpTitle = geenKlant
+            ? "Selecteer eerst een klant in stap 1"
+            : geenBladen
+            ? "Voeg eerst een blad toe in stap 2"
+            : undefined;
+          const erpTekst = busy === 'erpnext'
+            ? 'Bezig…'
+            : state.quotationName
+            ? 'Bijwerken in ERPNext'
+            : 'Verzenden naar ERPNext';
+          return (
+            <button
+              onClick={handleVerzendNaarERPNext}
+              disabled={erpDisabled}
+              title={erpTitle}
+              style={{
+                padding: "9px 20px", fontSize: 14, borderRadius: 7,
+                border: "none",
+                background: erpDisabled ? "#94a3b8" : "#0d9488",
+                color: "white",
+                cursor: erpDisabled ? "not-allowed" : "pointer",
+                fontWeight: 600, opacity: busy === 'erpnext' ? 0.7 : 1,
+                minWidth: 200,
+              }}
+            >
+              {erpTekst}
+            </button>
+          );
+        })()}
       </footer>
       {conceptSaved && (
         <div style={{ marginTop: 8, textAlign: "right" }}>
