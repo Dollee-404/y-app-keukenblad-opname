@@ -8,17 +8,19 @@ Levend document. Update na elke sprint-merge.
 |---|---|---|
 | 1 | Project-skelet + bridge + seed-data | ✅ Klaar |
 | 2 | Step1 Klant — zoek + aanmaken | ✅ Klaar |
-| 3a | Step2 Tekening basis + UX-redesign | 🔄 In uitvoering |
-| 3b deel 1 | Sparingen + productcatalogus | ⏳ Volgend |
-| 3b deel 2 | Boorgaten + validatie + notities | ⏳ Daarna |
-| 3c | Verstek-relaties + foto/PDF import | ⏳ Daarna |
-| 4 | Step3 Specificaties (materiaal + randen) | ⏳ |
-| 5 | Step4 Overzicht + wizard-navigatie | ⏳ |
-| 6 | PDF werkplaatstekening | ⏳ |
-| 7 | PDF klantbevestiging | ⏳ |
-| 8 | ERPNext mapping + Quotation aanmaken | ⏳ |
-| 9 | Offline-flow + sync + concept-opslag | ⏳ |
-| 10 | Catalogus-PR naar Y-App | ⏳ |
+| 3a | Step2 Tekening basis + UX-redesign | ✅ Klaar |
+| 3b deel 1 | Sparingen + productcatalogus | ✅ Klaar |
+| 3b deel 2 | Boorgaten + kraan-flow + AnchorPicker | ✅ Klaar |
+| 3c | Verstek-relaties tussen bladen | ✅ Klaar |
+| 4 | Step3 Specificaties (materiaal + randen + accessoires) | ✅ Klaar |
+| 5 | Step4 Overzicht + wizard-navigatie | ✅ Klaar |
+| 6 | PDF werkplaatstekening + zaagbrief | ✅ Klaar |
+| 7 | PDF klantbevestiging | ⏳ Gepland |
+| 8 | ERPNext custom fields + Quotation-knop in Step4 | ✅ Klaar |
+| 9 | ERPNext prijsstructuur (19 templates, 38 variants, 22 toeslagen) | ✅ Klaar |
+| 10 | Correcte item-codes + toeslagen in Quotation + validatie-wiring | 🔄 E2E-test lopend |
+| 11 | PDF klantbevestiging | ⏳ Gepland |
+| 12 | Polish-sprint (UX, m²-weergave, overige open punten) | ⏳ Gepland |
 
 ## Inzichten uit het keukenbladenexpert-perspectief
 
@@ -160,10 +162,13 @@ Dat heeft drie consequenties:
 
 | Vraag | Status | Sprint |
 |---|---|---|
-| File upload via bridge — uitbreiding nodig | Open | 8 |
-| ERPNext custom fields voor `kbf_*` — bestaan ze al? | Open | 8 |
-| Catalogus-PR voorwaarden | Open | 10 |
-| Verkoper auto-match op ingelogde user e-mail | Open | 5 |
+| File upload via bridge — uitbreiding nodig | Open | 11 |
+| ERPNext custom fields voor `kbf_*` | ✅ Aangemaakt (sprint 8a) | 8 |
+| Catalogus-PR voorwaarden Y-App | Open | later |
+| Verkoper auto-match op ingelogde user e-mail | Open | 12 |
+| UI m²-weergave: netto vs. bruto (materiaalverlies) | Open | 12 |
+| ERPNext item-codes voor 561 kleuren uitbreiden | Open | configuratie |
+| Kleur-picker in Step3 gevoed vanuit ERPNext Items | Open | fase 3 |
 
 ## Niet-in-scope (out of scope, voor nu)
 
