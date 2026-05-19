@@ -1,0 +1,148 @@
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import {
+  laadGeldigeItemCodes,
+  valideerItemCode,
+  valideerOpname,
+  resetItemCodeCache,
+} from '../itemCodeValidation.js';
+import type { Opname } from '../../data/seed-types.js';
+
+// Vitest hoist — mockt zowel statische als dynamische imports van bridge.js
+vi.mock('../../bridge.js', () => ({
+  fetchList: vi.fn(),
+}));
+
+async function getBridgeMock() {
+  const { fetchList } = await import('../../bridge.js');
+  return vi.mocked(fetchList);
+}
+
+const GELDIGE_CODES = [
+  { item_code: 'COMPOSIET-BLAD-20MM-GLENCOE' },
+  { item_code: 'COMPOSIET-BLAD-20MM-AERIS' },
+  { item_code: 'DEKTON-BLAD-12MM-SIRIUS' },
+];
+
+beforeEach(async () => {
+  resetItemCodeCache();
+  const fetchList = await getBridgeMock();
+  fetchList.mockReset();
+  fetchList.mockResolvedValue(GELDIGE_CODES);
+});
+
+// ─── valideerItemCode ────────────────────────────────────────────────────────
+
+describe('valideerItemCode', () => {
+  it('is no-op als cache nog niet geladen is', () => {
+    expect(() => valideerItemCode('ONBEKEND-BLAD-99MM-NIETS')).not.toThrow();
+  });
+
+  it('laat geldige code door na laden', async () => {
+    await laadGeldigeItemCodes();
+    expect(() => valideerItemCode('COMPOSIET-BLAD-20MM-GLENCOE')).not.toThrow();
+  });
+
+  it('gooit fout voor code die niet in cache zit', async () => {
+    await laadGeldigeItemCodes();
+    expect(() => valideerItemCode('COMPOSIET-BLAD-20MM-ONBEKEND'))
+      .toThrow('niet geconfigureerd in ERPNext');
+  });
+
+  it('foutmelding bevat de ongeldige code', async () => {
+    await laadGeldigeItemCodes();
+    expect(() => valideerItemCode('MARMER-BLAD-30MM-TESTKLEUR'))
+      .toThrow("'MARMER-BLAD-30MM-TESTKLEUR'");
+  });
+});
+
+// ─── laadGeldigeItemCodes — idempotentie ─────────────────────────────────────
+
+describe('laadGeldigeItemCodes — idempotentie', () => {
+  it('tweede aanroep doet geen tweede fetch', async () => {
+    const fetchList = await getBridgeMock();
+    await laadGeldigeItemCodes();
+    await laadGeldigeItemCodes();
+    expect(fetchList).toHaveBeenCalledTimes(1);
+  });
+
+  it('parallelle aanroepen bundelen op één fetch', async () => {
+    const fetchList = await getBridgeMock();
+    await Promise.all([
+      laadGeldigeItemCodes(),
+      laadGeldigeItemCodes(),
+      laadGeldigeItemCodes(),
+    ]);
+    expect(fetchList).toHaveBeenCalledTimes(1);
+  });
+
+  it('na fout kan opnieuw worden geprobeerd', async () => {
+    const fetchList = await getBridgeMock();
+    fetchList.mockRejectedValueOnce(new Error('timeout'));
+
+    await expect(laadGeldigeItemCodes()).rejects.toThrow('timeout');
+
+    // loadingPromise is gereset — tweede poging doet nieuwe fetch
+    fetchList.mockResolvedValue(GELDIGE_CODES);
+    await laadGeldigeItemCodes();
+
+    expect(fetchList).toHaveBeenCalledTimes(2);
+    expect(() => valideerItemCode('COMPOSIET-BLAD-20MM-GLENCOE')).not.toThrow();
+  });
+
+  it('na resetItemCodeCache() kan cache opnieuw geladen worden', async () => {
+    const fetchList = await getBridgeMock();
+    await laadGeldigeItemCodes();
+    resetItemCodeCache();
+    await laadGeldigeItemCodes();
+    expect(fetchList).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ─── valideerOpname ──────────────────────────────────────────────────────────
+
+describe('valideerOpname', () => {
+  function maakOpname(kleur_code: string): Opname {
+    return {
+      ordernummer: 'TEST',
+      datum: '2026-05-19',
+      type: 'OFFERTE',
+      status: 'CONCEPT',
+      verkoper: { naam: '', email: '', telefoon: '' },
+      opdrachtgever: { naam: 'Test', straat: '', postcodePlaats: '' },
+      afleveradres: { naam: '', straat: '', postcodePlaats: '', gelijkAanOpdrachtgever: true, etage: '', klantRegeltLift: false },
+      materiaal: { soort: 'COMPOSIET', producent: 'CAESARSTONE', afwerking: 'GEPOLIJST', kleur: '' },
+      materiaalKeuze: { soort: 'COMPOSIET', dikte_mm: 20, kleur_code, kleur_label: kleur_code },
+      bladen: [{ id: 'P1', label: 'BLAD A', werkstukType: 'Bladdeel A', categorie: 'WB', lengte: 2000, breedte: 600, dikte: 20, randen: [] }],
+      sparingen: [],
+      accessoires: [],
+      meting: {} as never,
+      levering: {} as never,
+      plaatsing: {} as never,
+      bijzonderheden: '',
+      geactiveerdeClausules: [],
+    } as unknown as Opname;
+  }
+
+  it('is no-op als cache niet geladen is', () => {
+    expect(() => valideerOpname(maakOpname('GLENCOE'))).not.toThrow();
+  });
+
+  it('laat geldige opname door', async () => {
+    await laadGeldigeItemCodes();
+    expect(() => valideerOpname(maakOpname('GLENCOE'))).not.toThrow();
+  });
+
+  it('gooit fout voor opname met ongeldige kleur', async () => {
+    await laadGeldigeItemCodes();
+    expect(() => valideerOpname(maakOpname('ONBEKENDEKLEUR')))
+      .toThrow('niet geconfigureerd in ERPNext');
+  });
+
+  it('gooit specifieke fout als cache geladen maar leeg is', async () => {
+    const fetchList = await getBridgeMock();
+    fetchList.mockResolvedValue([]); // ERPNext geeft lege lijst terug
+    await laadGeldigeItemCodes();
+    expect(() => valideerOpname(maakOpname('GLENCOE')))
+      .toThrow('nog geen keukenblad-items geconfigureerd');
+  });
+});

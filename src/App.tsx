@@ -1,4 +1,5 @@
-import { useReducer, useState } from "react";
+import { useReducer, useState, useEffect } from "react";
+import { laadGeldigeItemCodes } from "./erpnext/itemCodeValidation";
 import { opnameReducer, initialState, legeInitialState } from "./state/opnameReducer";
 
 const leegParam = new URLSearchParams(window.location.search).has("leeg");
@@ -11,6 +12,12 @@ import Step3Specs from "./pages/step3/Step3Specs";
 import Step4Overzicht from "./pages/step4/Step4Overzicht";
 
 export default function App() {
+  useEffect(() => {
+    laadGeldigeItemCodes().catch(err =>
+      console.warn('[item-codes] Pre-load mislukt:', err)
+    );
+  }, []);
+
   const [state, dispatch] = useReducer(opnameReducer, startState);
   const [debugOpen, setDebugOpen] = useState(false);
   const [huidigStap, setHuidigStap] = useState<number>(startStap);

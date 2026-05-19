@@ -4,6 +4,7 @@ import type { OpnameAction } from "../../state/opnameReducer";
 import { totaalM2, totaalAccessoires, globaleWaarschuwingen } from "../../state/helpers";
 import { saveConcept } from "../../state/conceptStorage";
 import { opnameNaarQuotation } from "../../erpnext/quotationMapper";
+import { laadGeldigeItemCodes, valideerOpname } from "../../erpnext/itemCodeValidation";
 import * as bridge from "../../bridge";
 import BladKaart from "./BladKaart";
 
@@ -64,6 +65,11 @@ export default function Step4Overzicht({ state, dispatch, onNavigeer }: Props) {
     setFout(null);
     setSucces(null);
     try {
+      // JIT cache-load als pre-load in App.tsx faalde (idempotent)
+      await laadGeldigeItemCodes();
+      // Valideert alle item_codes vóór mapping — gooit bij ongeldige combinatie
+      valideerOpname(state);
+
       const payload = opnameNaarQuotation(state);
       const erpUrl = bridge.getErpNextAppUrl();
 
@@ -83,10 +89,30 @@ export default function Step4Overzicht({ state, dispatch, onNavigeer }: Props) {
       }
     } catch (err) {
       console.error('[erpnext-verzenden]', err);
-      setFout('Verzenden mislukt: ' + (err instanceof Error ? err.message : String(err)));
+      setFout(opbouwFoutmelding(err));
     } finally {
       setBusy(null);
     }
+  }
+
+  function opbouwFoutmelding(err: unknown): string {
+    if (!(err instanceof Error)) return 'Onbekende fout bij verzenden';
+    const msg = err.message;
+    if (msg.includes('Geen Y-App context'))
+      return 'Niet verbonden met Y-App. Open de extensie via de Y-App browser-tab.';
+    if (msg.includes('timeout'))
+      return 'ERPNext reageert niet (timeout). Probeer het over een minuut opnieuw.';
+    if (msg.includes('nog geen keukenblad-items geconfigureerd'))
+      return msg;
+    if (msg.includes('niet geconfigureerd in ERPNext'))
+      return msg;
+    if (msg.includes('Klant moet geselecteerd zijn'))
+      return 'Selecteer eerst een klant in stap 1';
+    if (msg.includes('Opname heeft geen bladen'))
+      return 'Voeg eerst een blad toe in stap 2';
+    if (msg.includes('exc_type'))
+      return `ERPNext-fout: ${msg.replace(/.*exc_type.*?:\s*/, '').trim()}`;
+    return `Verzenden mislukt: ${msg}`;
   }
 
   function handleSaveConcept() {
