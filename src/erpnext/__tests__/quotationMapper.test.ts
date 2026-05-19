@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { opnameNaarQuotation, bouwBladDescription, omschrijfRandafwerking, omschrijfSparingen } from '../quotationMapper.js';
-import { maakRechthoekOpname, maakLVormOpname, maakMultiBladOpname, maakLegeOpname } from '../../pdf/__tests__/fixtures.js';
+import { maakRechthoekOpname, maakLVormOpname, maakMultiBladOpname, maakLegeOpname, maakRechthoekBlad } from '../../pdf/__tests__/fixtures.js';
 import type { Opname } from '../../data/seed-types.js';
 
 function metKlant(opname: Opname): Opname {
@@ -11,9 +11,10 @@ function metKlant(opname: Opname): Opname {
 }
 
 describe('opnameNaarQuotation', () => {
-  it('happy path — 3 bladen geeft 3 items', () => {
+  it('happy path — 3 bladen levert minstens 3 blad-items op', () => {
     const payload = opnameNaarQuotation(metKlant(maakMultiBladOpname()));
-    expect(payload.items).toHaveLength(3);
+    const bladItems = payload.items.filter(i => i.item_code.includes('-BLAD-'));
+    expect(bladItems).toHaveLength(3);
   });
 
   it('quotation_to is altijd Customer', () => {
@@ -64,30 +65,82 @@ describe('opnameNaarQuotation', () => {
 });
 
 describe('QuotationItem per blad', () => {
-  it('item_code is AANRECHTBLAD', () => {
+  it('item_code bevat materiaal-prefix en kleur_code', () => {
     const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
-    expect(payload.items[0].item_code).toBe('AANRECHTBLAD');
+    // fixture: materiaalKeuze soort=COMPOSIET, dikte_mm=20, kleur_code='GG'
+    expect(payload.items[0].item_code).toBe('COMPOSIET-BLAD-20MM-GG');
   });
 
-  it('item_name bevat kleur en afmetingen', () => {
+  it('item_name bevat kleur_label', () => {
     const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
     expect(payload.items[0].item_name).toContain('Glencoe');
-    expect(payload.items[0].item_name).toContain('1958');
   });
 
-  it('rate is altijd 0', () => {
+  it('item_name bevat dikte in mm', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    expect(payload.items[0].item_name).toContain('20mm');
+  });
+
+  it('uom is Square Meter voor blad-items', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    expect(payload.items[0].uom).toBe('Square Meter');
+  });
+
+  it('qty is lengte × breedte / 1.000.000', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    // 1958 × 1001 / 1.000.000 = 1.959958 → afgerond op 3 decimalen
+    expect(payload.items[0].qty).toBeCloseTo(1958 * 1001 / 1_000_000, 3);
+  });
+
+  it('rate is altijd 0 voor alle items', () => {
     const payload = opnameNaarQuotation(metKlant(maakMultiBladOpname()));
     for (const item of payload.items) expect(item.rate).toBe(0);
-  });
-
-  it('qty is 1 per blad', () => {
-    const payload = opnameNaarQuotation(metKlant(maakMultiBladOpname()));
-    for (const item of payload.items) expect(item.qty).toBe(1);
   });
 
   it('L-vorm blad — description bevat "(L-vorm)"', () => {
     const payload = opnameNaarQuotation(metKlant(maakLVormOpname()));
     expect(payload.items[0].description).toContain('L-vorm');
+  });
+
+  it('boorgaten worden als aparte items toegevoegd na blad-item', () => {
+    const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
+    // fixture heeft 2× KRAAN boorgat → gegroepeerd tot 1 item met qty=2
+    const boorItem = payload.items.find(i => i.item_code === 'TOESLAG-BOORGAT-KRAAN');
+    expect(boorItem).toBeDefined();
+    expect(boorItem!.qty).toBe(2);
+    expect(boorItem!.uom).toBe('Nos');
+  });
+
+  it('verstek-relaties komen als aparte items na alle bladen', () => {
+    const opname = metKlant({
+      ...maakRechthoekOpname(),
+      verstekRelaties: [{ id: 'v1', bladA_id: 'P1', zijdeA_id: '0', bladB_id: 'P2', zijdeB_id: '2', hoek_graden: 90 }],
+    });
+    const payload = opnameNaarQuotation(opname);
+    const verstekItem = payload.items.find(i => i.item_code === 'TOESLAG-RAND-VERSTEK');
+    expect(verstekItem).toBeDefined();
+    expect(verstekItem!.qty).toBe(1);
+    // staat aan het eind (na alle blad-items)
+    const lastBladIdx = payload.items.map(i => i.item_code).lastIndexOf(v => v.includes('-BLAD-'));
+    const verstekIdx = payload.items.indexOf(verstekItem!);
+    expect(verstekIdx).toBeGreaterThan(0);
+  });
+
+  it('sparingen op blad-niveau worden als items toegevoegd', () => {
+    const opname = metKlant({
+      ...maakRechthoekOpname(),
+      bladen: [maakRechthoekBlad({
+        sparingen: [{
+          id: 'sp-1', type: 'KOOKPLAAT' as const, bladId: 'blad-rechthoek',
+          inbouwwijze: 'VLAKBOUW' as const, positie: { x: 900, y: 500 }, breedte: 760, hoogte: 460,
+        }],
+      })],
+    });
+    const payload = opnameNaarQuotation(opname);
+    const sparItem = payload.items.find(i => i.item_code === 'TOESLAG-SPARING-KOOKPLAAT-VLAKBOUW');
+    expect(sparItem).toBeDefined();
+    expect(sparItem!.qty).toBe(1);
+    expect(sparItem!.uom).toBe('Nos');
   });
 });
 

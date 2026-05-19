@@ -1,5 +1,8 @@
 import type { Opname, Blad, Sparing, Boorgat } from '../data/seed-types.js';
 import { effectiefMateriaalSoort } from '../state/helpers.js';
+import { bladZijden } from '../drawing/bladZijdenHelpers.js';
+import { bladItemCode, sparingItemCode, boorgatItemCode, randItemCode } from './itemCodeMapping.js';
+import { valideerItemCode } from './itemCodeValidation.js';
 
 export interface QuotationPayload {
   quotation_to: 'Customer';
@@ -28,6 +31,9 @@ export function opnameNaarQuotation(opname: Opname): QuotationPayload {
 
   const vandaag = new Date().toISOString().slice(0, 10);
 
+  const bladItems = opname.bladen.flatMap(blad => bladNaarItems(blad, opname));
+  const verstekItems = verstekNaarItems(opname);
+
   return {
     quotation_to: 'Customer',
     party_name: klantNaam,
@@ -36,29 +42,123 @@ export function opnameNaarQuotation(opname: Opname): QuotationPayload {
     kbf_meetdatum: opname.datum ?? vandaag,
     kbf_inmeter: opname.inmeting?.inmeter ?? opname.verkoper?.naam ?? '',
     kbf_opname_json: JSON.stringify(opname),
-    items: opname.bladen.map(blad => bladNaarItem(blad, opname)),
+    items: [...bladItems, ...verstekItems],
   };
 }
 
-function bladNaarItem(blad: Blad, opname: Opname): QuotationItem {
-  const mat = materiaalOmschrijving(blad, opname);
-  const isLVorm = (blad.outline?.length ?? 4) > 4;
-  const afmetingen = isLVorm
-    ? `${blad.lengte}×${blad.breedte} (L-vorm)`
-    : `${blad.lengte}×${blad.breedte}`;
+function bladNaarItems(blad: Blad, opname: Opname): QuotationItem[] {
+  const items: QuotationItem[] = [];
 
-  return {
-    item_code: 'AANRECHTBLAD',
-    item_name: `Aanrechtblad ${mat} ${blad.lengte}×${blad.breedte}`,
-    description: bouwBladDescription(blad, opname, afmetingen),
+  // Hoofditem: blad (m² = lengte × breedte, inclusief materiaalverlies)
+  const code = bladItemCode(blad, opname);
+  valideerItemCode(code);
+  const m2 = Math.round((blad.lengte * blad.breedte) / 1_000_000 * 1000) / 1000;
+  const mat = materiaalOmschrijving(blad, opname);
+  const dikte = blad.dikte ?? opname.materiaalKeuze?.dikte_mm ?? 20;
+  const isLVorm = (blad.outline?.length ?? 4) > 4;
+  const afmetingenLabel = isLVorm ? `${blad.lengte}×${blad.breedte} (L-vorm)` : undefined;
+
+  items.push({
+    item_code: code,
+    item_name: `Keukenblad ${mat} ${dikte}mm`,
+    description: bouwBladDescription(blad, opname, afmetingenLabel),
+    qty: m2,
+    uom: 'Square Meter',
+    rate: 0,
+  });
+
+  // Sparingen
+  for (const sparing of blad.sparingen ?? []) {
+    const sparCode = sparingItemCode(sparing);
+    if (!sparCode) continue;
+    const product = [sparing.productMerk, sparing.productModel].filter(Boolean).join(' ');
+    items.push({
+      item_code: sparCode,
+      item_name: sparingNaam(sparing),
+      description: `${sparing.type.charAt(0) + sparing.type.slice(1).toLowerCase()} ${sparing.inbouwwijze.toLowerCase()}${product ? ` — ${product}` : ''}`,
+      qty: 1,
+      uom: 'Nos',
+      rate: 0,
+    });
+  }
+
+  // Boorgaten — gegroepeerd per item_code
+  const boorgatGroepen = new Map<string, number>();
+  for (const bg of blad.boorgaten ?? []) {
+    const bgCode = boorgatItemCode(bg);
+    if (!bgCode) continue;
+    boorgatGroepen.set(bgCode, (boorgatGroepen.get(bgCode) ?? 0) + 1);
+  }
+  for (const [bgCode, qty] of boorgatGroepen) {
+    items.push({
+      item_code: bgCode,
+      item_name: BOORGAT_NAMEN[bgCode] ?? 'Boorgat',
+      description: `Boorgat — ${(BOORGAT_NAMEN[bgCode] ?? 'boorgat').replace('Boorgat ', '')}`,
+      qty,
+      uom: 'Nos',
+      rate: 0,
+    });
+  }
+
+  // Randen — gegroepeerd per item_code, in strekkende meter
+  const randGroepen = new Map<string, number>(); // item_code → totaal mm
+  const zijden = bladZijden(blad);
+  for (const rand of blad.randafwerkingen ?? []) {
+    const randCode = randItemCode(rand);
+    if (!randCode) continue;
+    const zijde = zijden.find(z => z.id === rand.zijdeId);
+    randGroepen.set(randCode, (randGroepen.get(randCode) ?? 0) + (zijde?.lengte_mm ?? 0));
+  }
+  for (const [randCode, totaalMm] of randGroepen) {
+    const meter = Math.round((totaalMm / 1000) * 100) / 100;
+    items.push({
+      item_code: randCode,
+      item_name: RAND_NAMEN[randCode] ?? 'Randafwerking',
+      description: `Randafwerking ${randCode.replace('TOESLAG-RAND-', '')}`,
+      qty: meter,
+      uom: 'Meter',
+      rate: 0,
+    });
+  }
+
+  return items;
+}
+
+function verstekNaarItems(opname: Opname): QuotationItem[] {
+  return (opname.verstekRelaties ?? []).map(rel => ({
+    item_code: 'TOESLAG-RAND-VERSTEK',
+    item_name: 'Verstekverbinding',
+    description: `Verstek blad ${rel.bladA_id} zijde ${rel.zijdeA_id} ↔ blad ${rel.bladB_id} zijde ${rel.zijdeB_id}`,
     qty: 1,
     uom: 'Nos',
     rate: 0,
-  };
+  }));
+}
+
+const BOORGAT_NAMEN: Record<string, string> = {
+  'TOESLAG-BOORGAT-KRAAN': 'Boorgat kraan',
+  'TOESLAG-BOORGAT-QUOOKER': 'Boorgat Quooker',
+  'TOESLAG-BOORGAT-ELEKTRA': 'Boorgat elektra',
+  'TOESLAG-BOORGAT-WCD': 'Boorgat dubbele WCD',
+};
+
+const RAND_NAMEN: Record<string, string> = {
+  'TOESLAG-RAND-DV20': 'Verstek 20mm hoog',
+  'TOESLAG-RAND-DV30': 'Verstek 30mm hoog',
+  'TOESLAG-RAND-DV40': 'Verstek 40mm hoog',
+  'TOESLAG-RAND-T1': 'Enkel facet',
+  'TOESLAG-RAND-KF': 'Kanten-facet',
+};
+
+function sparingNaam(sparing: Sparing): string {
+  const typeLabel: Record<string, string> = { SPOELBAK: 'Spoelbak', KOOKPLAAT: 'Kookplaat', HOEK: 'Hoekuitsparing', KOLOM: 'Kolomuitsparing', KOOF: 'Koofuitsparing', BOORGAT: 'Boorgat' };
+  const inbouwLabel: Record<string, string> = { VLAKBOUW: 'vlakbouw', ONDERBOUW: 'onderbouw', OPBOUW: 'opbouw' };
+  const t = typeLabel[sparing.type] ?? sparing.type;
+  const i = inbouwLabel[sparing.inbouwwijze] ?? '';
+  return i ? `${t} ${i}` : t;
 }
 
 function materiaalOmschrijving(blad: Blad, opname: Opname): string {
-  // kleur_label bevat al de afwerking (bv "Glencoe Gepolijst") — niet dubbelen
   const kleurLabel =
     blad.materiaalKeuze?.kleur_label ??
     opname.materiaalKeuze?.kleur_label;

@@ -191,6 +191,22 @@ Dat heeft drie consequenties:
   Caesarstone, etc.). Na verzameling: kleurstalen activeren in
   MateriaalSectie UI.
 
+## Architectuur-evolutie
+
+- **ERPNext als single source of truth (fase 2–5)** — Nu haalt de mapper
+  item-codes uit een lokale mapping-tabel. In fase 2 laadt `laadGeldigeItemCodes()`
+  de beschikbare codes bij app-init en valideert bij verzenden. Fase 3:
+  de kleur-/dikte-keuzelijsten in Step3 worden gevoed door ERPNext Items
+  (geen lokale JSON meer). Fase 4: prijzen zichtbaar na offerte-aanmaak.
+  Fase 5: volledige configurator vanuit ERPNext Item-structuur.
+
+- **UI m²-weergave consistent maken met facturering** — Step4 toont nu
+  netto-blad-oppervlak voor L-vormen (met uithap-aftrek via shoelace),
+  terwijl ERPNext de volle plaat-oppervlakte factureert (lengte × breedte —
+  materiaalverlies zijn klantkosten). Step4-UI moet ook lengte × breedte
+  tonen, eventueel met label "materiaalverbruik" om de betekenis duidelijk
+  te maken. Past beter in een aparte polish-iteratie.
+
 ## Toekomstige features (sprint 11 of polish-sprint)
 
 - **Bladstap/rabat-feature** — fysieke stap in blad-onderzijde voor
