@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { Opname } from "../../data/seed-types";
 import type { OpnameAction } from "../../state/opnameReducer";
 import { totaalM2, totaalAccessoires, globaleWaarschuwingen } from "../../state/helpers";
-import { saveConcept } from "../../state/conceptStorage";
+import { markeerVerzonden } from "../../storage/conceptOpslag";
 import { opnameNaarQuotation } from "../../erpnext/quotationMapper";
 import { laadGeldigeItemCodes, valideerOpname } from "../../erpnext/itemCodeValidation";
 import * as bridge from "../../bridge";
@@ -12,10 +12,12 @@ interface Props {
   state: Opname;
   dispatch: React.Dispatch<OpnameAction>;
   onNavigeer: (stap: number, bladId?: string, subSection?: string) => void;
+  online?: boolean;
 }
 
-export default function Step4Overzicht({ state, dispatch, onNavigeer }: Props) {
-  const [conceptSaved, setConceptSaved] = useState<string | null>(null);
+export default function Step4Overzicht({ state, dispatch, onNavigeer, online = true }: Props) {
+  // quotationName aanwezig bij mount = opname was al eerder verzonden (hervat concept)
+  const quotationNameOpMount = useRef(state.quotationName);
   const [busy, setBusy] = useState<null | 'werkplaats' | 'zaagbrief' | 'erpnext'>(null);
   const [fout, setFout] = useState<string | null>(null);
   const [succes, setSucces] = useState<{ naam: string; url: string } | null>(null);
@@ -75,12 +77,14 @@ export default function Step4Overzicht({ state, dispatch, onNavigeer }: Props) {
 
       if (state.quotationName) {
         await bridge.updateDocument('Quotation', state.quotationName, payload as unknown as Record<string, unknown>);
+        markeerVerzonden();
         setSucces({
           naam: state.quotationName,
           url: `${erpUrl}/app/quotation/${state.quotationName}`,
         });
       } else {
         const result = await bridge.createDocument<{ name: string }>('Quotation', payload as unknown as Record<string, unknown>);
+        markeerVerzonden();
         dispatch({ type: 'SET_QUOTATION_NAME', name: result.name });
         setSucces({
           naam: result.name,
@@ -115,12 +119,6 @@ export default function Step4Overzicht({ state, dispatch, onNavigeer }: Props) {
     return `Verzenden mislukt: ${msg}`;
   }
 
-  function handleSaveConcept() {
-    const key = saveConcept(state);
-    setConceptSaved(key);
-    setTimeout(() => setConceptSaved(null), 4000);
-  }
-
   const klantnaam =
     state.opdrachtgever?.naam || state.afleveradres?.naam || null;
 
@@ -138,6 +136,19 @@ export default function Step4Overzicht({ state, dispatch, onNavigeer }: Props) {
 
   return (
     <div className="overzicht-page" style={{ maxWidth: 1024, margin: "0 auto", padding: "24px 16px" }}>
+      {/* Stap 11.5 — Verzonden-banner als opname al eerder naar ERPNext is gestuurd */}
+      {quotationNameOpMount.current && !succes && (
+        <div style={{
+          background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8,
+          padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#1e40af",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <span>
+            Deze opname is reeds verzonden als Quotation <strong>{quotationNameOpMount.current}</strong>.
+            Klik op "Bijwerken in ERPNext" om wijzigingen door te sturen, of start een nieuwe opname via "+ Nieuw".
+          </span>
+        </div>
+      )}
       {/* Amber banner als geen klant */}
       {!klantnaam && (
         <div style={{
@@ -352,27 +363,13 @@ export default function Step4Overzicht({ state, dispatch, onNavigeer }: Props) {
         {/* Visuele scheiding */}
         <div style={{ width: 12 }} />
 
-        {/* Secondary: Concept opslaan */}
-        <button
-          onClick={handleSaveConcept}
-          disabled={busy !== null}
-          style={{
-            padding: "9px 16px", fontSize: 14, borderRadius: 7,
-            border: "1px solid #5eead4",
-            background: "#f0fdfa",
-            color: "#0f766e",
-            cursor: busy !== null ? "not-allowed" : "pointer",
-            fontWeight: 500,
-          }}
-        >
-          Concept opslaan
-        </button>
-
-        {/* Primary: Verzenden naar ERPNext */}
+        {/* Primary: Verzenden naar ERPNext (stap 11.7 — disabled bij offline) */}
         {(() => {
           const geenKlant = !state.opdrachtgever?.naam;
-          const erpDisabled = geenKlant || geenBladen || busy !== null;
-          const erpTitle = geenKlant
+          const erpDisabled = geenKlant || geenBladen || busy !== null || !online;
+          const erpTitle = !online
+            ? "Geen internet — kan niet verzenden naar ERPNext"
+            : geenKlant
             ? "Selecteer eerst een klant in stap 1"
             : geenBladen
             ? "Voeg eerst een blad toe in stap 2"
@@ -402,13 +399,6 @@ export default function Step4Overzicht({ state, dispatch, onNavigeer }: Props) {
           );
         })()}
       </footer>
-      {conceptSaved && (
-        <div style={{ marginTop: 8, textAlign: "right" }}>
-          <small style={{ color: "#16a34a", fontSize: 13 }}>
-            ✓ Concept opgeslagen — terug te vinden via Concepten-pagina (sprint 9)
-          </small>
-        </div>
-      )}
     </div>
   );
 }

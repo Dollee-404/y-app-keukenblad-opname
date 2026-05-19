@@ -10,12 +10,14 @@ const STAPPEN = [
 interface Props {
   state: Opname;
   huidigStap: number;
+  online?: boolean;
   onStap: (nr: number) => void;
   onNaarStap1?: () => void;
   onVolgende?: () => void;
+  onNieuweOpname?: () => void;
 }
 
-export default function TopBar({ state, huidigStap, onStap, onNaarStap1, onVolgende }: Props) {
+export default function TopBar({ state, huidigStap, online = true, onStap, onNaarStap1, onVolgende, onNieuweOpname }: Props) {
   const klantNaam =
     state.afleveradres?.naam ||
     state.opdrachtgever?.naam ||
@@ -93,9 +95,29 @@ export default function TopBar({ state, huidigStap, onStap, onNaarStap1, onVolge
         </div>
       </div>
 
-      {/* Rechts: opslag-status + Volgende */}
+      {/* Rechts: netwerk-indicator + Nieuwe opname + Volgende */}
       <div className="flex items-center" style={{ gap: 8 }}>
-        <span style={{ fontSize: 11, color: "#94a3b8" }}>Bewaard</span>
+        {!online && (
+          <span style={{ fontSize: 11, color: "#92400e", background: "#fef3c7", borderRadius: 999, padding: "2px 8px" }}>
+            Offline
+          </span>
+        )}
+        {onNieuweOpname && (
+          <button
+            onClick={onNieuweOpname}
+            style={{
+              fontSize: 11,
+              padding: "4px 10px",
+              border: "0.5px solid #94a3b8",
+              borderRadius: 6,
+              background: "white",
+              color: "#64748b",
+              cursor: "pointer",
+            }}
+          >
+            + Nieuw
+          </button>
+        )}
         {huidigStap < 4 && (
           <button
             onClick={onVolgende}

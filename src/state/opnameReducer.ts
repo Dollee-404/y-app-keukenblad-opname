@@ -115,7 +115,9 @@ export type OpnameAction =
   | { type: "VERSTEK_RELATIE_TOEVOEGEN"; relatie: VerstekRelatie }
   | { type: "VERSTEK_RELATIE_VERWIJDEREN"; id: string }
   | { type: "VERSTEK_RELATIE_BIJWERKEN"; id: string; patch: Partial<VerstekRelatie> }
-  | { type: "SET_QUOTATION_NAME"; name: string };
+  | { type: "SET_QUOTATION_NAME"; name: string }
+  | { type: "LAAD_OPNAME"; opname: Opname }
+  | { type: "RESET_OPNAME" };
 
 export function opnameReducer(state: Opname, action: OpnameAction): Opname {
   switch (action.type) {
@@ -442,5 +444,11 @@ export function opnameReducer(state: Opname, action: OpnameAction): Opname {
 
     case "SET_QUOTATION_NAME":
       return { ...state, quotationName: action.name };
+
+    case "LAAD_OPNAME":
+      return action.opname;
+
+    case "RESET_OPNAME":
+      return legeInitialState;
   }
 }

@@ -2,225 +2,221 @@
 
 Levend document. Update na elke sprint-merge.
 
-## Overzicht
+## Project in één oogopslag
+
+Y-App extensie voor De Keukenbladenfabriek (Vasto Natuursteen Steenhouwerij BV). Laat inmeters op locatie volledige opnames maken — klant + bladen + sparingen + boorgaten + materiaal + accessoires + verstek-relaties — en stuurt die door naar ERPNext als Quotation, plus genereert werkplaats-PDFs.
+
+**Repo:** `Dollee-404/y-app-keukenblad-opname` op GitHub
+**Live:** https://dollee-404.github.io/y-app-keukenblad-opname/
+**Tech:** React 18 + Vite + TypeScript, sandboxed iframe in Y-App, postMessage-bridge
+**Test-instance ERPNext:** drechtstedenbouw-erp.prilk.cloud
+**Domeintaal:** Nederlands (Blad, Zichtzijde DV40/T1-EF/KF, Sparing, Verstek, Vlakbouw, Werkstuktype, Boorgat)
+
+## Wat is af
 
 | Sprint | Onderwerp | Status |
 |---|---|---|
-| 1 | Project-skelet + bridge + seed-data | ✅ Klaar |
-| 2 | Step1 Klant — zoek + aanmaken | ✅ Klaar |
-| 3a | Step2 Tekening basis + UX-redesign | ✅ Klaar |
-| 3b deel 1 | Sparingen + productcatalogus | ✅ Klaar |
-| 3b deel 2 | Boorgaten + kraan-flow + AnchorPicker | ✅ Klaar |
-| 3c | Verstek-relaties tussen bladen | ✅ Klaar |
-| 4 | Step3 Specificaties (materiaal + randen + accessoires) | ✅ Klaar |
-| 5 | Step4 Overzicht + wizard-navigatie | ✅ Klaar |
-| 6 | PDF werkplaatstekening + zaagbrief | ✅ Klaar |
-| 7 | PDF klantbevestiging | ⏳ Gepland |
-| 8 | ERPNext custom fields + Quotation-knop in Step4 | ✅ Klaar |
-| 9 | ERPNext prijsstructuur (19 templates, 38 variants, 22 toeslagen) | ✅ Klaar |
-| 10 | Correcte item-codes + toeslagen in Quotation + validatie-wiring | 🔄 E2E-test lopend |
-| 11 | PDF klantbevestiging | ⏳ Gepland |
-| 12 | Polish-sprint (UX, m²-weergave, overige open punten) | ⏳ Gepland |
+| 1 | Project-skelet + bridge + seed-data | ✅ |
+| 2 | Step1 Klant — zoek + aanmaken via Customer/Address | ✅ |
+| 3a | Step2 Tekening basis + drie-koloms layout | ✅ |
+| 3b-1 | Sparingen op canvas + productcatalogus | ✅ |
+| 3b-2 | Boorgaten + leader-lijnen + label-zones | ✅ |
+| 3c | Verstek-relaties + helpers + multi-blad-view | ✅ |
+| 4 | Step3 Specificaties — materiaal + randen + accessoires | ✅ |
+| 5 | Step4 Overzicht + concept-opslag + globale waarschuwingen | ✅ |
+| 6 | PDF werkplaatstekening + zaagbrief + UI download-knoppen | ✅ |
+| 8 | ERPNext custom fields + Quotation-mapper + UI-knop | ✅ |
+| 9 | ERPNext prijsstructuur — Items + Variants + Prices | ✅ |
+| 10 | Mapper-upgrade naar specifieke item_codes + validatie | ✅ |
 
-## Inzichten uit het keukenbladenexpert-perspectief
+**Niet in deze tabel maar wel relevant:** sprint 7 (klantbevestiging-PDF) is uitgesteld, zie sectie hieronder.
 
-Tijdens sprint 3a kwamen we tot het besef dat sparingen geen "specificaties"
-zijn maar **integraal onderdeel van de tekening**. Een ervaren inmeter
-plaatst de kookplaat op de tekening op basis van wat de klant aanwijst —
-niet later, in een apart formulier.
+## Wat volgt
 
-Dat heeft drie consequenties:
+### Sprint 11 — Offline-flow + concept-persistentie
 
-1. **Sparingen verhuizen van stap 3 naar stap 2** (gedaan in sprint 3b)
-2. **Productcatalogus is kritiek** — vrije tekst betekent productiefouten
-3. **Stap 3 wordt veel kleiner** — alleen randafwerking, materiaal,
-   accessoires die geen sparing zijn
+Nu nog werkt de extensie alleen tijdens een open Y-App-sessie. State leeft in-memory; bij refresh of opnieuw openen is alles weg, inclusief `quotationName` waardoor je dubbele Quotations krijgt bij heropening.
 
-## Stap-indeling herzien
+Wat erin moet:
+- localStorage concept-opslag voor lopende opnames
+- Hervatten van laatste concept bij opstart
+- Lijst van eerdere concepten + selecteren
+- `quotationName` persistent zodat update-flow werkt over sessies
+- Sync-queue voor opnames gemaakt zonder netwerk
+- Detectie wanneer bridge faalt + visuele indicator
 
-| Stap | Wat | Sprint |
-|---|---|---|
-| 1 Klant | Opdrachtgever + afleveradres + verkoper | 2 |
-| 2 Tekening | Bladen + sparingen + boorgaten + verstek + foto-import | 3a/b/c |
-| 3 Specificaties | Materiaal + randen + losse accessoires + clausules | 4 |
-| 4 Overzicht | PDF preview + opslaan + ERPNext-koppeling | 5/6/7/8 |
+Bouwt op werk dat al staat — `saveConcept` werkt al lokaal sinds sprint 5, alleen niet hervat-bij-opstart.
 
-## Wat in welke sprint
+### Sprint 12 — ERPNext als single source of truth (fase 2)
 
-### Sprint 3b deel 1 — Sparingen op canvas
+Eelke heeft de wens uitgesproken dat alle configuratie-data uiteindelijk uit ERPNext komt. Sprint 10 was fase 1 (item_codes-validatie). Sprint 12 is fase 2:
 
-- Productcatalogus (5+ kookplaten, 5+ spoelbakken)
-- Rechthoekige sparingen plaatsen (kookplaat, spoelbak, vrije rechthoek)
-- Vlakbouw rendering (dubbele lijn, boven/onder maten, trede, radius)
-- Productkeuze auto-fult maten
-- Position + afmetingen aanpasbaar via panel
-- Vlakbouw composiet veiligheidswarning
-- BladInfoPanel toont sparingen-lijst per blad
+- Materiaal-soorten dropdown in Step3 uit ERPNext Item Group "Keukenblad" i.p.v. seed
+- Kleur-dropdown uit Item Variants per materiaal
+- Diktes uit beschikbare templates per materiaal
+- Bij ontbrekende variant: duidelijke melding "deze kleur is nog niet geconfigureerd"
 
-→ `docs/sprint-3b-1-sparingen.md`
+Vereist:
+- Werkgesprek met De Keukenbladenfabriek over wie ERPNext gaat beheren
+- Migratie van seed-data kleuren (561 stuks) naar ERPNext-variants — of bewust startklein blijven
+- Backwards-compatibility met bestaande lokale opnames die naar oude kleur-namen verwijzen
 
-### Sprint 3b deel 2 — Boorgaten + validatie
+### Sprint 13 — Productcatalogus uit ERPNext (fase 3)
 
-- Boorgaten (cirkel-sparingen): kraan, Quooker, elektra, dubbele WCD,
-  zeeppomp
-- Boorgat-groepen met hartafstand (zoals D7 D70 op Vasto-tekening)
-- Doorboring of blindgat per boorgat
-- Maat-referentie-selector: "Gemeten vanaf [linkerrand / vorige sparing /
-  wand-zijde]"
-- Rand-afstand validatie: warning bij <60mm tot blad-rand
-- Notitie-veld per sparing
-- Foto-upload per sparing (placeholder tot bridge upload werkt)
-- Hoekradius input op vrije rechthoek-sparingen
+Sparing-producten (kookplaten, spoelbakken, kranen, Quookers) komen nu uit hardcoded JSON in sprint 3b-1. Verplaatsen naar ERPNext Items in een eigen Item Group "Apparatuur" of vergelijkbaar.
 
-→ `docs/sprint-3b-2-boorgaten.md` (nog te schrijven)
+- Bora C75, Pitt, AEG, Siemens, Atag kookplaat-modellen
+- Caressi spoelbak-volledige-lijst
+- Quooker / Grohe / Hansgrohe kraan-modellen
+- Sparing-component in Step2 fetcht producten uit ERPNext
 
-### Sprint 3c — Verstek + import
+### Sprint 14 — Klantbevestiging via ERPNext Print Format
 
-- Verstek-relatie toevoegen: kies blad A → rand → blad B → rand
-- Multi-blad-view in canvas (gerelateerde bladen samen tonen)
-- Foto/PDF achtergrond importeren (drag-drop)
-- Calibratie: teken één bekende maat → schaal bepalen
+Was oorspronkelijk sprint 7 maar uitgesteld. Architectuur-keuze: niet zelf bouwen, ERPNext heeft hier een ingebouwd Print Format systeem voor.
+
+Plan:
+- ERPNext Print Format voor Quotation aanmaken (voorblad + specificatie-pagina + voorwaarden-footer)
+- Quotation-template met logo + clausules + handtekening-velden
+- Eventueel: server-side PDF-merge via custom Frappe-method om werkplaatstekening + zaagbrief in te voegen
+
+Vereist:
+- Huisstijl-assets (logo "DE KEUKEN/BLADEN/FABRIEK")
+- Standaard clausule-set (de 19 clausules uit seed → ERPNext Terms and Conditions)
+- Vasto-orderbevestiging als referentie (al beschikbaar)
+
+### Sprint 15 — Tekening-PDF huisstijl-refactor
+
+De huidige werkplaatstekening gebruikt oude Vasto-stijl footer (2×6 grid). De orderbevestiging-bron toont een nieuwe huisstijl met logo rechtsboven en 3×3 footer-grid. Voor consistentie met de klantbevestiging:
+
+- Logo rechtsboven in plaats van header-tekst
+- Footer 3×3 grid met materiaalcode-formaat `COM20WB` / `COM20RW`
+- Doorsneeprofiel-icoon in eigen cel
+- Materiaalcode-prefix-systeem (COM, DEK, KER, GRA, MAR, KWA, NAT)
+
+Vereist input van opdrachtgever:
+- Exacte doorsneeprofiel-anatomie (eerder 3 iteraties op vastgelopen, parkeerd)
+- Materiaalcode-prioriteits-regel bij meerdere randafwerkingen op één blad
+
+### Sprint 16 — Foto/PDF-import
+
+Was oorspronkelijk sprint 3c maar uitgesteld. Achtergrond-foto importeren in Step2-canvas zodat de inmeter erover kan overtrekken.
+
+- Drag-drop foto in canvas
+- Calibratie: één bekende maat tekenen om schaal te bepalen
 - Overtrekken in import-mode (zelfde tools als teken-mode)
+- PDF-pagina rasterizen als achtergrond
 
-→ `docs/sprint-3c-verstek-import.md` (nog te schrijven)
+### Sprint 17 — File-upload via bridge
 
-### Sprint 4 — Specificaties
+Open vraag sinds sprint 1. Bridge ondersteunt `fetchPrivateFile` (download) maar niet `uploadFile` (upload). Nodig voor:
+- Foto's van opname meesturen naar Quotation
+- Gegenereerde PDFs als attachment opslaan op Quotation
 
-- Project-materiaal (soort + producent + afwerking + kleur via cascade)
-- Randafwerking per zijde per blad (DV40, T1, KF, ...)
-- Visuele preview van randtype als doorsnede-icoon
-- Accessoires zonder sparing (losse kraan-bestelling, Quooker, downdraft)
-- Etage + lift-info (verhuizen vanuit stap 1 naar hier? nog te bepalen)
-- Selectie van standaardclausules (uit seed.clausules)
+Drie opties besproken in sprint 1:
+- `callMethod` naar `frappe.client.attach_file` proberen zonder Y-App te wijzigen
+- Y-App `ExtensionHost.tsx` uitbreiden met `uploadFile`-method
+- Base64 in custom field (rommelig bij meerdere foto's)
 
-→ `docs/sprint-4-specificaties.md` (nog te schrijven)
+Vereist beslissing van Y-App-team welke route gekozen wordt.
 
-### Sprint 5 — Overzicht + navigatie
+### Sprint 18 — Bladstap/rabat-feature
 
-- Wizard-navigatie: Volgende/Vorige knoppen werkend
-- Validatie per stap: rode rand op step-pill als incomplete
-- Step4 Overzicht-pagina: alle data samengevat
-- "Verzenden naar ERPNext" knop (werking in sprint 8)
-- "PDF voorbeeld bekijken" knop (werking in sprint 6/7)
+Fysieke stap in blad-onderzijde voor verstek-aansluiting (Vasto-conventie). Datamodel uitbreiden met `blad.stappen[]` + UI in Step2 + canvas/PDF rendering met arcering.
 
-→ `docs/sprint-5-overzicht.md`
+Voorbeeld uit Vasto order 2600376 pagina 1: "5" met schuine streep op rechterrand betekent 5mm stap.
 
-### Sprint 6 — PDF werkplaatstekening
+### Sprint 19 — Catalogus-PR naar Y-App
 
-- jsPDF + svg2pdf integratie
-- Layout volgens Vasto-stijl:
-  - Boven: blad-info (afmetingen, materiaal, kleur)
-  - Midden: technische tekening met maatvoering
-  - Onder: titelblok (klant, datum, week, productcode, route-balk)
-- Eén pagina per blad (zoals Vasto)
-- Detail-tekening van randafwerking + radius indien aanwezig
-- Sparing-data inclusief productcode
-
-→ `docs/sprint-6-pdf-werkplaats.md`
-
-### Sprint 7 — PDF klantbevestiging
-
-- Vereenvoudigde versie van de PDF
-- Geen technische maatvoering, wel m² + materiaal
-- Foto's van opname meegestuurd
-- Handtekening-veld onderaan
-- Footer met bedrijfsgegevens + algemene voorwaarden
-
-→ `docs/sprint-7-pdf-klant.md`
-
-### Sprint 8 — ERPNext
-
-- Custom fields op Quotation aanmaken (migration JSON)
-- Opname → Quotation mapping
-- Items per blad/sparing/randafwerking met rate=0
-- File-upload van PDF + foto's (vereist bridge-uitbreiding —
-  open vraag uit sprint 1)
-- Opslaan-knop in Step4
-
-→ `docs/sprint-8-erpnext.md`
-
-### Sprint 9 — Offline + sync
-
-- localStorage concept-opslag
-- "Bewaard" indicator dynamisch maken
-- Concept hervatten bij opstart
-- Sync-queue voor wanneer offline gemaakte opname later wordt verzonden
-- Conflict-detectie als bridge faalt
-
-→ `docs/sprint-9-offline.md`
-
-### Sprint 10 — Catalogus
+Productie-ready maken voor de Y-App extensie-catalogus.
 
 - Manifest/metadata voor Y-App extensie-catalogus
 - PR naar Y-App repo met CatalogEntry
 - Versie-tagging + changelog
 - Productie-deploy via GitHub Pages
+- Setup-documentatie voor nieuwe ERPNext-instances (verwijzen naar `docs/erpnext-setup.md` + `docs/erpnext-prijsstructuur.md`)
 
-→ `docs/sprint-10-catalogus.md`
+### Sprint 20 — Polish-sprint
+
+Verzamelpot voor losse polish-items die door eerdere sprints zijn verschoven:
+
+- Hex-waarden voor de 561 materiaalkleuren (voor kleurstalen-preview in UI)
+- BladKaart materiaal-labels Title Case consistent
+- L-vorm zijde-selectie consistent met rechthoek (klikbaar canvas i.p.v. knoppen)
+- Verstek-koppeling tabblad-naam korter voor tablet
+- Vlakbouw binnenste rechthoek met radius 5mm (Vasto-conventie)
+- "Bora C75" → "Kookplaat vlakbouw C75" met productcategorie-prefix
+- Catalogus-browser als aparte pagina (stand-alone bruikbaar tijdens klantadvies)
+- m²-weergave op Step4 consistent met facturering (volle plaat-oppervlakte voor L-vormen)
 
 ## Open vragen, lopend
 
 | Vraag | Status | Sprint |
 |---|---|---|
-| File upload via bridge — uitbreiding nodig | Open | 11 |
-| ERPNext custom fields voor `kbf_*` | ✅ Aangemaakt (sprint 8a) | 8 |
-| Catalogus-PR voorwaarden Y-App | Open | later |
-| Verkoper auto-match op ingelogde user e-mail | Open | 12 |
-| UI m²-weergave: netto vs. bruto (materiaalverlies) | Open | 12 |
-| ERPNext item-codes voor 561 kleuren uitbreiden | Open | configuratie |
-| Kleur-picker in Step3 gevoed vanuit ERPNext Items | Open | fase 3 |
+| File upload via bridge — uitbreiding nodig | Open, drie opties besproken | 17 |
+| Doorsneeprofiel-icoon — exacte Vasto-anatomie | Parkeerd na 3 iteraties, wacht op opdrachtgever-specs | 15 |
+| Materiaalcode-prioriteits-regel (DV > KF > T?) | Wacht op opdrachtgever | 15 |
+| m²-formule voor randafwerking in zaagbrief | Wacht op opdrachtgever — placeholder 0,00 | bij eerstvolgende offerte-iteratie |
+| Wie beheert ERPNext bij De Keukenbladenfabriek? | Wacht op kantoor-gesprek | 12 |
+| Hoe gaan 561 kleuren in ERPNext? | Wacht op kantoor-gesprek | 12 |
+| Huisstijl-assets — logo SVG/PNG beschikbaar? | Wacht op opdrachtgever | 14, 15 |
+| Algemene voorwaarden tekst | Wacht op opdrachtgever | 14 |
+| Verkoper-koppeling met ingelogde user e-mail | Open | 11 of 12 |
+| ERPNext brand-prefixen voor andere materialen | Open (alleen Composiet bevestigd) | nieuwe variants |
 
-## Niet-in-scope (out of scope, voor nu)
+## Niet in scope (bewust)
 
 - 3D-visualisatie van keuken
-- Materiaalkosten / prijscalculatie (komt uit kantoor)
+- Materiaalkosten / prijscalculatie in de extensie zelf (gaat via ERPNext Items + Prices, niet in JS)
 - Klantcommunicatie (e-mail/SMS verzending) — Y-App heeft eigen tools
-- Beheer van productcatalogus in de UI (alleen JSON-bewerking)
 - Multi-language (alleen NL)
-- Niet-haakse blad-vormen (alleen rechthoeken + L-vorm + uithap)
+- Niet-haakse blad-vormen anders dan rechthoek + L-vorm + uithap
 - Schuine sparing-randen
-
-## Sprint 7+ (na PDF-generatie)
-
-- **Catalogus-browser als aparte pagina** — referentie-tool waar de
-  inmeter materialen, kleuren, producten kan bekijken zonder lopende
-  opname. Stand-alone bruikbaar (bv. tijdens klantadvies). Aparte route
-  binnen extensie. Mogelijk gekoppeld aan sprint 4 data zodat producten
-  daar consistent zijn.
-
-## Sprint 7+ data-verrijking (kan parallel aan andere sprints)
-
-- **Hex-waarden voor materiaalkleuren** — verzamel hex-waarden voor
-  de 561 kleuren in seed-data, beginnend met de meest voorkomende
-  per leverancier. Bron: leverancier-websites (Quartzforms, Dekton,
-  Caesarstone, etc.). Na verzameling: kleurstalen activeren in
-  MateriaalSectie UI.
 
 ## Architectuur-evolutie
 
-- **ERPNext als single source of truth (fase 2–5)** — Nu haalt de mapper
-  item-codes uit een lokale mapping-tabel. In fase 2 laadt `laadGeldigeItemCodes()`
-  de beschikbare codes bij app-init en valideert bij verzenden. Fase 3:
-  de kleur-/dikte-keuzelijsten in Step3 worden gevoed door ERPNext Items
-  (geen lokale JSON meer). Fase 4: prijzen zichtbaar na offerte-aanmaak.
-  Fase 5: volledige configurator vanuit ERPNext Item-structuur.
+De koers verschuift van **"seed-data als bron, ERPNext als bestemming"** naar **"ERPNext als single source of truth, extensie als interface"**. Vijf fasen:
 
-- **UI m²-weergave consistent maken met facturering** — Step4 toont nu
-  netto-blad-oppervlak voor L-vormen (met uithap-aftrek via shoelace),
-  terwijl ERPNext de volle plaat-oppervlakte factureert (lengte × breedte —
-  materiaalverlies zijn klantkosten). Step4-UI moet ook lengte × breedte
-  tonen, eventueel met label "materiaalverbruik" om de betekenis duidelijk
-  te maken. Past beter in een aparte polish-iteratie.
+1. **Fase 1 (sprint 10 — ✅ klaar)** — Item-codes uit ERPNext gevalideerd bij verzending. Mapper kiest specifieke variants. Seed-data blijft voor dropdowns.
+2. **Fase 2 (sprint 12)** — Materiaal + kleur dropdowns in Step3 uit ERPNext. Geen kleur-mismatch meer mogelijk.
+3. **Fase 3 (sprint 13)** — Productcatalogus (kookplaten, spoelbakken, kranen) uit ERPNext.
+4. **Fase 4 (verspreid over latere sprints)** — Clausules, verkopers, montagepartners, etages uit ERPNext.
+5. **Fase 5 (eindstaat)** — Seed-data definitief verwijderd uit codebase. ERPNext is de enige bron voor configuratie-data.
 
-## Toekomstige features (sprint 11 of polish-sprint)
+Tussenstaat tijdens fasen 2-4: hybride — sommige data uit ERPNext, sommige nog uit seed. Dat is acceptabel zolang we per fase een werkende oplevering hebben.
 
-- **Bladstap/rabat-feature** — fysieke stap in blad-onderzijde voor
-  verstek-aansluiting (Vasto-conventie). Datamodel uitbreiden met
-  `blad.stappen[]` (positie, diepte, lengte). UI in stap 2 voor
-  invoer. Canvas + PDF rendering met arcering (zoals Vasto pagina 1:
-  "5" met schuine streep op rechterrand).
+## Designprincipes (uit iteratie vastgelegd)
 
-  Voorbeeld uit Vasto order 2600376 pagina 1: stap begint op
-  x=1861mm vanaf linkerrand, 5mm diep, loopt door tot rechterrand.
-  Geeft de tekenaar zaag-instructie voor verstek-aansluiting met
-  ander blad.
+- **Datamodel = fysieke werkelijkheid**: mm-units, Y=0 onderaan groeit omhoog. Render flipt voor SVG/PDF. Eén flip-plek consistent.
+- **Positie = MIDDEN** van sparing/boorgat, niet linksonder
+- **Maat-referentie**: opgeslagen positie blijft absoluut vanaf linksonder
+- **Bij delete referentie-item**: silent omrekenen naar absoluut, geen notificatie
+- **Boorgat-labels op canvas**: altijd buiten blad met leader-lijntjes, één label per groep ("2× Ø35"), geen tekst op cirkels
+- **Boorgat-labels in PDF**: Vasto-stijl "D35", groep "D7D70" samengevoegd
+- **Waarschuwen, niet blokkeren**: vlakbouw composiet, DV+verstek conflict, randafstand <60mm — amber warnings, inmeter mag doorgaan
+- **Canvas-kleuren**: rood=kookplaat, blauw=spoelbak, grijs=vrij, paars=boorgat, teal=geselecteerd-overlay, teal=verstek-driehoekjes
+- **Title Case consistent** — render-laag past `titleCase()` toe ook op uppercase seed-data
+- **Verstek twee niveaus**: zijde-niveau (verstek=true op Randafwerking) + relatie-niveau (VerstekRelatie tussen bladen). DV-codes + verstek = warning niet blokkerend
+- **L-vorm maatvoering**: deelmaten boven, totaalmaat onder, uithap-maten buiten de bladcontour (eigen project-conventie, wijkt af van Vasto-standaard)
+- **m²-berekening**: altijd `lengte × breedte` (volle plaat). Uithap-aftrek niet toegepast omdat het zaag-afval is dat de klant betaalt.
+
+## Procesregels (geleerd door incidenten)
+
+1. **Eerst `git push`, dan PR aanmaken** — sprint 3c incident waar 10 commits niet meekwamen
+2. **Pixels zijn essentieel voor verificatie** — Claude Code's tekst-rapportage is onbetrouwbaar bij visuele wijzigingen
+3. **Visuele check vereist screenshot** — niet tekstuele beschrijving
+4. **Eerlijk over wat we niet weten** — verzinnen levert bugs of valse aannames op (bv. Vasto's "1861-maat" bleek een bladstap-feature, niet een normale maat)
+5. **Bij twijfel: vraag, niet aannemen** — vooral bij vakvraagstukken (welke maat-conventie, welk kleur-systeem, etc.)
+6. **Eén-taak-per-keer per Claude Code iteratie** — meer dan dat geeft "voor 80% goed" oplevering waar je niet kunt aanwijzen wat fout is
+7. **Akkoord per sub-stap** — vooral bij sprint-prompts met meerdere stappen, eerste stap pas akkoorderen vóór door
+
+## Brondocumenten in repo
+
+- `docs/erpnext-setup.md` — Custom fields setup voor nieuwe ERPNext-instances
+- `docs/erpnext-prijsstructuur.md` — Item Groups, Items, Item Prices voor nieuwe instances
+- `handover-keukenblad-opname.md` — Project-context voor nieuwe sessies (mogelijk verouderd na deze roadmap-update)
+
+## Referentie-PDFs (extern beschikbaar)
+
+- Vasto-werkplaatstekening order 2600376 — oude huisstijl footer
+- Vasto-zaagbrief order 2600376 — tekstuele specificatie-lijst
+- Vasto-orderbevestiging order 2600376 — nieuwe huisstijl met logo + 3×3 footer + tekening-pagina's dit moet hem worden
