@@ -2,7 +2,7 @@ function inIframe(): boolean {
   try { return window !== window.top; } catch { return true; }
 }
 
-function toonPdfInOverlay(url: string, filename: string): void {
+function toonPdfInOverlay(dataUrl: string, filename: string): void {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;background:#1e293b';
 
@@ -16,12 +16,12 @@ function toonPdfInOverlay(url: string, filename: string): void {
   const sluit = document.createElement('button');
   sluit.textContent = 'Sluiten ✕';
   sluit.style.cssText = 'background:#334155;border:none;color:#e2e8f0;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-family:sans-serif';
-  sluit.onclick = () => { overlay.remove(); URL.revokeObjectURL(url); };
+  sluit.onclick = () => overlay.remove();
 
   balk.append(label, sluit);
 
   const frame = document.createElement('iframe');
-  frame.src = url;
+  frame.src = dataUrl;
   frame.style.cssText = 'flex:1;border:none;width:100%;background:white';
 
   overlay.append(balk, frame);
@@ -29,13 +29,15 @@ function toonPdfInOverlay(url: string, filename: string): void {
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-
   if (inIframe()) {
-    toonPdfInOverlay(url, filename);
+    // Brave blokkeert blob URLs — data URI is inline data en wordt niet geblokkeerd
+    const reader = new FileReader();
+    reader.onload = () => toonPdfInOverlay(reader.result as string, filename);
+    reader.readAsDataURL(blob);
     return;
   }
 
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
