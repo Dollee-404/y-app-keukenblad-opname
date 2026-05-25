@@ -10,13 +10,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
 
   if (inIframe()) {
-    // In sandboxed iframe: window.open() synchroon vanuit user-gesture werkt wél.
-    const newTab = window.open(url, '_blank');
-    if (newTab) {
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } else {
-      toonDownloadToast(url, filename);
-    }
+    toonDownloadToast(url, filename);
     return;
   }
 
