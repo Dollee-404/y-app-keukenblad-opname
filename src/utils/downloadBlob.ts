@@ -42,14 +42,10 @@ function toonDownloadToast(url: string, filename: string): void {
 
   const link = document.createElement('a');
   link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener';
   link.textContent = 'Klik hier om te openen';
   link.style.cssText = 'color:#5eead4;text-decoration:underline;font-weight:600;white-space:nowrap';
-  // download-attribuut is geblokkeerd in sandbox — window.open() vanuit user-gesture werkt wél
-  link.onclick = (e) => {
-    e.preventDefault();
-    window.open(url, '_blank');
-    toast.remove();
-  };
 
   const sluit = document.createElement('button');
   sluit.textContent = '×';
