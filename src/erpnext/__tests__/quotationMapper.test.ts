@@ -120,8 +120,6 @@ describe('QuotationItem per blad', () => {
     const verstekItem = payload.items.find(i => i.item_code === 'TOESLAG-RAND-VERSTEK');
     expect(verstekItem).toBeDefined();
     expect(verstekItem!.qty).toBe(1);
-    // staat aan het eind (na alle blad-items)
-    const lastBladIdx = payload.items.map(i => i.item_code).lastIndexOf(v => v.includes('-BLAD-'));
     const verstekIdx = payload.items.indexOf(verstekItem!);
     expect(verstekIdx).toBeGreaterThan(0);
   });
