@@ -67,12 +67,10 @@ describe("Scenario 4 — Nieuwe opname met confirm", () => {
   afterEach(() => {
     cleanup();
     localStorage.clear();
-    vi.restoreAllMocks();
   });
 
-  it("annuleren: confirm=false behoudt concept en bladen in localStorage", async () => {
+  it("annuleren: modal sluiten behoudt concept en bladen", async () => {
     zetConceptInStorage(maakOpnameMetBladen(2), false);
-    vi.spyOn(window, "confirm").mockReturnValue(false);
 
     render(<App />);
     await waitFor(() =>
@@ -81,15 +79,20 @@ describe("Scenario 4 — Nieuwe opname met confirm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /nieuw/i }));
 
-    expect(window.confirm).toHaveBeenCalled();
+    // Modal verschijnt
+    expect(screen.getByText(/actief concept/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /annuleren/i }));
+
+    // Modal weg, concept intact
+    expect(screen.queryByText(/actief concept/i)).not.toBeInTheDocument();
     const stored = localStorage.getItem(CONCEPT_KEY);
     expect(stored).not.toBeNull();
     expect(JSON.parse(stored!).opname.bladen).toHaveLength(2);
   });
 
-  it("bevestigen: confirm=true wist localStorage en toont schone stap 1", async () => {
+  it("bevestigen: Doorgaan wist localStorage en toont schone stap 1", async () => {
     zetConceptInStorage(maakOpnameMetBladen(2), false);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     render(<App />);
     await waitFor(() =>
@@ -97,10 +100,11 @@ describe("Scenario 4 — Nieuwe opname met confirm", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /nieuw/i }));
+    expect(screen.getByText(/actief concept/i)).toBeInTheDocument();
 
-    // wisConcept() is synchroon — direct na click leeg
+    fireEvent.click(screen.getByRole("button", { name: /doorgaan/i }));
+
     expect(localStorage.getItem(CONCEPT_KEY)).toBeNull();
-    // Stap 1 actief → TopBar toont "geen klant"
     expect(screen.getByText(/nog geen klant/i)).toBeInTheDocument();
   });
 });
@@ -163,13 +167,11 @@ describe("Scenario 6 — Nieuwe opname wist verzonden-banner", () => {
   afterEach(() => {
     cleanup();
     localStorage.clear();
-    vi.restoreAllMocks();
   });
 
   it("na bevestigen '+ Nieuw': banner weg, localStorage leeg, stap 1 actief", async () => {
     const opname = maakOpnameMetBladen(1, { quotationName: "SAL-QTN-2026-0042" });
     zetConceptInStorage(opname, true);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     render(<App />);
     await waitFor(() =>
@@ -181,7 +183,11 @@ describe("Scenario 6 — Nieuwe opname wist verzonden-banner", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /nieuw/i }));
 
-    // Synchroon: localStorage gewist, step 1, banner weg
+    // Modal verschijnt
+    expect(screen.getByText(/actief concept/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /doorgaan/i }));
+
     expect(localStorage.getItem(CONCEPT_KEY)).toBeNull();
     expect(screen.queryByText(/reeds verzonden/i)).not.toBeInTheDocument();
     expect(screen.getByText(/nog geen klant/i)).toBeInTheDocument();

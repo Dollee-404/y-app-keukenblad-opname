@@ -4,14 +4,17 @@ import { opnameReducer, initialState, legeInitialState } from "./state/opnameRed
 import { opslaanConcept, laadConceptInfo, wisConcept, bestaatConcept } from "./storage/conceptOpslag";
 import { useNetworkStatus } from "./hooks/useNetworkStatus";
 import TopBar from "./components/TopBar";
+import ConfirmModal from "./components/ConfirmModal";
 import Step1Klant from "./pages/Step1Klant";
 import Step2Tekening from "./pages/Step2Tekening";
 import Step3Specs from "./pages/step3/Step3Specs";
 import Step4Overzicht from "./pages/step4/Step4Overzicht";
 
-const leegParam = new URLSearchParams(window.location.search).has("leeg");
-const startState = leegParam ? legeInitialState : initialState;
-const startStap = leegParam ? 1 : (import.meta.env.DEV ? 3 : 1);
+const searchParams = new URLSearchParams(window.location.search);
+const leegParam = searchParams.has("leeg");
+const inYappParam = Boolean(searchParams.get("host"));
+const startState = (leegParam || inYappParam) ? legeInitialState : initialState;
+const startStap = (leegParam || inYappParam) ? 1 : (import.meta.env.DEV ? 3 : 1);
 
 export default function App() {
   const [state, dispatch] = useReducer(opnameReducer, startState);
@@ -22,6 +25,7 @@ export default function App() {
     subSection?: string;
   }>({});
   const [conceptToast, setConceptToast] = useState<string | null>(null);
+  const [confirmNieuweOpname, setConfirmNieuweOpname] = useState(false);
   const online = useNetworkStatus();
 
   // Aantal state-changes dat nog overgeslagen wordt voor auto-save begint.
@@ -79,13 +83,19 @@ export default function App() {
   // Stap 11.4 — Nieuwe opname met bevestiging als er een concept aanwezig is
   function handleNieuweOpname() {
     if (bestaatConcept()) {
-      if (!window.confirm('Er is een actief concept. Dit wordt verwijderd als je een nieuwe opname start. Doorgaan?')) return;
+      setConfirmNieuweOpname(true);
+      return;
     }
+    voerNieuweOpnameUit();
+  }
+
+  function voerNieuweOpnameUit() {
     wisConcept();
     skipAutoSave.current = 0;
     dispatch({ type: 'RESET_OPNAME' });
     setHuidigStap(1);
     setConceptToast(null);
+    setConfirmNieuweOpname(false);
   }
 
   return (
@@ -165,6 +175,14 @@ export default function App() {
         <main className="flex-1 overflow-y-auto">
           <Step4Overzicht state={state} dispatch={dispatch} onNavigeer={naarStapMetContext} online={online} />
         </main>
+      )}
+
+      {confirmNieuweOpname && (
+        <ConfirmModal
+          bericht="Er is een actief concept. Dit wordt verwijderd als je een nieuwe opname start. Doorgaan?"
+          onBevestigen={voerNieuweOpnameUit}
+          onAnnuleren={() => setConfirmNieuweOpname(false)}
+        />
       )}
     </div>
   );
