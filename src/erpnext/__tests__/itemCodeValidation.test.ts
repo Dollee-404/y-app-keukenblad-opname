@@ -18,9 +18,10 @@ async function getBridgeMock() {
 }
 
 const GELDIGE_CODES = [
-  { item_code: 'COMPOSIET-BLAD-20MM-GLENCOE' },
-  { item_code: 'COMPOSIET-BLAD-20MM-AERIS' },
-  { item_code: 'DEKTON-BLAD-12MM-SIRIUS' },
+  { item_code: 'COMPOSIET-BLAD-20MM' },
+  { item_code: 'COMPOSIET-BLAD-12MM' },
+  { item_code: 'DEKTON-BLAD-12MM' },
+  { item_code: 'GRANIET-BLAD-20MM' },
 ];
 
 beforeEach(async () => {
@@ -39,19 +40,19 @@ describe('valideerItemCode', () => {
 
   it('laat geldige code door na laden', async () => {
     await laadGeldigeItemCodes();
-    expect(() => valideerItemCode('COMPOSIET-BLAD-20MM-GLENCOE')).not.toThrow();
+    expect(() => valideerItemCode('COMPOSIET-BLAD-20MM')).not.toThrow();
   });
 
   it('gooit fout voor code die niet in cache zit', async () => {
     await laadGeldigeItemCodes();
-    expect(() => valideerItemCode('COMPOSIET-BLAD-20MM-ONBEKEND'))
+    expect(() => valideerItemCode('ONBEKEND-BLAD-20MM'))
       .toThrow('niet geconfigureerd in ERPNext');
   });
 
   it('foutmelding bevat de ongeldige code', async () => {
     await laadGeldigeItemCodes();
-    expect(() => valideerItemCode('MARMER-BLAD-30MM-TESTKLEUR'))
-      .toThrow("'MARMER-BLAD-30MM-TESTKLEUR'");
+    expect(() => valideerItemCode('MARMER-BLAD-30MM'))
+      .toThrow("'MARMER-BLAD-30MM'");
   });
 });
 
@@ -86,7 +87,7 @@ describe('laadGeldigeItemCodes — idempotentie', () => {
     await laadGeldigeItemCodes();
 
     expect(fetchList).toHaveBeenCalledTimes(2);
-    expect(() => valideerItemCode('COMPOSIET-BLAD-20MM-GLENCOE')).not.toThrow();
+    expect(() => valideerItemCode('COMPOSIET-BLAD-20MM')).not.toThrow();
   });
 
   it('na resetItemCodeCache() kan cache opnieuw geladen worden', async () => {
@@ -129,13 +130,14 @@ describe('valideerOpname', () => {
 
   it('laat geldige opname door', async () => {
     await laadGeldigeItemCodes();
+    // item_code = COMPOSIET-BLAD-20MM — kleur zit niet meer in item_code
     expect(() => valideerOpname(maakOpname('GLENCOE'))).not.toThrow();
   });
 
-  it('gooit fout voor opname met ongeldige kleur', async () => {
+  it('laat opname door ongeacht kleur — kleur staat niet meer in item_code', async () => {
     await laadGeldigeItemCodes();
-    expect(() => valideerOpname(maakOpname('ONBEKENDEKLEUR')))
-      .toThrow('niet geconfigureerd in ERPNext');
+    // COMPOSIET-BLAD-20MM is geldig ongeacht welke kleur_code wordt meegegeven
+    expect(() => valideerOpname(maakOpname('ONBEKENDEKLEUR'))).not.toThrow();
   });
 
   it('gooit specifieke fout als cache geladen maar leeg is', async () => {

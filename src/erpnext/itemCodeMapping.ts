@@ -33,9 +33,7 @@ export function bladItemCode(blad: Blad, opname: Opname): string {
   const soort = effectiefMateriaalSoort(blad, opname);
   const prefix = materiaalPrefix(soort);
   const dikte = blad.dikte ?? opname.materiaalKeuze?.dikte_mm ?? 20;
-  const kleur = effectiefKleurCode(blad, opname);
-  if (!kleur) throw new Error(`Blad ${blad.id} heeft geen kleur — stel kleur in vóór verzenden`);
-  return `${prefix}-BLAD-${dikte}MM-${kleur}`;
+  return `${prefix}-BLAD-${dikte}MM`;
 }
 
 const SPARING_ITEM_CODES: Record<string, string> = {

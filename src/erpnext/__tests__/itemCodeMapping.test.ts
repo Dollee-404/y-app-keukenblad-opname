@@ -94,10 +94,10 @@ describe('effectiefKleurCode', () => {
 // ─── bladItemCode ────────────────────────────────────────────────────────────
 
 describe('bladItemCode', () => {
-  it('bouwt correcte item code voor composiet', () => {
+  it('bouwt correcte item code voor composiet zonder kleur-suffix', () => {
     const blad = maakBlad({ dikte: 20 });
     const opname = maakOpname({ materiaalKeuze: { soort: 'COMPOSIET', dikte_mm: 20, kleur_code: 'GLENCOE', kleur_label: 'Glencoe' } });
-    expect(bladItemCode(blad, opname)).toBe('COMPOSIET-BLAD-20MM-GLENCOE');
+    expect(bladItemCode(blad, opname)).toBe('COMPOSIET-BLAD-20MM');
   });
 
   it('Silestone wordt als COMPOSIET prefix gemapped', () => {
@@ -105,17 +105,40 @@ describe('bladItemCode', () => {
       dikte: 12,
       materiaalKeuze: { soort: 'SILESTONE', dikte_mm: 12, kleur_code: 'AERIS', kleur_label: 'Aeris' },
     });
-    expect(bladItemCode(blad, maakOpname())).toBe('COMPOSIET-BLAD-12MM-AERIS');
+    expect(bladItemCode(blad, maakOpname())).toBe('COMPOSIET-BLAD-12MM');
   });
 
   it('gebruikt blad.dikte als beschikbaar', () => {
     const blad = maakBlad({ dikte: 30, materiaalKeuze: { soort: 'GRANIET', dikte_mm: 30, kleur_code: 'STARGALAXY', kleur_label: 'Star Galaxy' } });
-    expect(bladItemCode(blad, maakOpname())).toBe('GRANIET-BLAD-30MM-STARGALAXY');
+    expect(bladItemCode(blad, maakOpname())).toBe('GRANIET-BLAD-30MM');
+  });
+});
+
+describe('bladItemCode — geen kleur-suffix', () => {
+  it('genereert template code zonder kleur voor DEKTON blad', () => {
+    const blad = maakBlad({
+      dikte: 30,
+      materiaalKeuze: { soort: 'DEKTON', dikte_mm: 30, kleur_code: 'KEON', kleur_label: 'Keon' },
+    });
+    const opname = maakOpname({ materiaalKeuze: undefined });
+    expect(bladItemCode(blad, opname)).toBe('DEKTON-BLAD-30MM');
   });
 
-  it('gooit fout als geen kleur', () => {
-    const blad = maakBlad({ materiaalKeuze: { soort: 'COMPOSIET', dikte_mm: 20, kleur_code: '', kleur_label: '' } });
-    expect(() => bladItemCode(blad, maakOpname())).toThrow('heeft geen kleur');
+  it('genereert template code zonder kleur voor COMPOSIET blad', () => {
+    const blad = maakBlad({ dikte: 20 });
+    const opname = maakOpname({
+      materiaalKeuze: { soort: 'COMPOSIET', dikte_mm: 20, kleur_code: 'ADAMINA', kleur_label: 'Adamina' },
+    });
+    expect(bladItemCode(blad, opname)).toBe('COMPOSIET-BLAD-20MM');
+  });
+
+  it('gooit niet bij ontbrekende kleur — kleur is niet meer vereist voor item_code', () => {
+    const blad = maakBlad({ dikte: 20 });
+    const opname = maakOpname({
+      materiaalKeuze: { soort: 'GRANIET', dikte_mm: 20 } as never,
+    });
+    expect(() => bladItemCode(blad, opname)).not.toThrow();
+    expect(bladItemCode(blad, opname)).toBe('GRANIET-BLAD-20MM');
   });
 });
 

@@ -65,10 +65,10 @@ describe('opnameNaarQuotation', () => {
 });
 
 describe('QuotationItem per blad', () => {
-  it('item_code bevat materiaal-prefix en kleur_code', () => {
+  it('item_code bevat materiaal-prefix en dikte, zonder kleur_code', () => {
     const payload = opnameNaarQuotation(metKlant(maakRechthoekOpname()));
-    // fixture: materiaalKeuze soort=COMPOSIET, dikte_mm=20, kleur_code='GG'
-    expect(payload.items[0].item_code).toBe('COMPOSIET-BLAD-20MM-GG');
+    // kleur staat niet meer in item_code — alleen prefix + dikte
+    expect(payload.items[0].item_code).toBe('COMPOSIET-BLAD-20MM');
   });
 
   it('item_name bevat kleur_label', () => {

@@ -1,7 +1,7 @@
 import type { Opname, Blad, Sparing, Boorgat } from '../data/seed-types.js';
 import { effectiefMateriaalSoort } from '../state/helpers.js';
 import { bladZijden } from '../drawing/bladZijdenHelpers.js';
-import { bladItemCode, sparingItemCode, boorgatItemCode, randItemCode } from './itemCodeMapping.js';
+import { bladItemCode, sparingItemCode, boorgatItemCode, randItemCode, effectiefKleurCode } from './itemCodeMapping.js';
 import { valideerItemCode } from './itemCodeValidation.js';
 
 export interface QuotationPayload {
@@ -53,14 +53,19 @@ function bladNaarItems(blad: Blad, opname: Opname): QuotationItem[] {
   const code = bladItemCode(blad, opname);
   valideerItemCode(code);
   const m2 = Math.round((blad.lengte * blad.breedte) / 1_000_000 * 1000) / 1000;
-  const mat = materiaalOmschrijving(blad, opname);
+  const soort = effectiefMateriaalSoort(blad, opname);
   const dikte = blad.dikte ?? opname.materiaalKeuze?.dikte_mm ?? 20;
+  const kleur = effectiefKleurCode(blad, opname);
+  const kleurLabel = blad.materiaalKeuze?.kleur_label ?? opname.materiaalKeuze?.kleur_label ?? kleur;
+  const mat = soort.charAt(0).toUpperCase() + soort.slice(1).toLowerCase();
   const isLVorm = (blad.outline?.length ?? 4) > 4;
   const afmetingenLabel = isLVorm ? `${blad.lengte}×${blad.breedte} (L-vorm)` : undefined;
 
   items.push({
     item_code: code,
-    item_name: `Keukenblad ${mat} ${dikte}mm`,
+    item_name: kleur
+      ? `${mat} ${dikte}mm — ${kleurLabel}`
+      : `${mat} ${dikte}mm`,
     description: bouwBladDescription(blad, opname, afmetingenLabel),
     qty: m2,
     uom: 'Square Meter',
