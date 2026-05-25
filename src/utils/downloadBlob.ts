@@ -1,7 +1,22 @@
+function inIframe(): boolean {
+  try {
+    return window !== window.top;
+  } catch {
+    return true;
+  }
+}
+
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
 
-  // Poging 1: anchor-click download
+  if (inIframe()) {
+    // In sandboxed iframe: a.click() en window.open() zijn geblokkeerd.
+    // Toast toont een klikbare link die wél werkt als directe user-gesture.
+    toonDownloadToast(url, filename);
+    return;
+  }
+
+  // Normale browser: anchor-click download
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
@@ -9,16 +24,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-
-  // Poging 2: nieuw tabblad (iframe-safe, user-initiated context)
-  setTimeout(() => {
-    const newTab = window.open(url, '_blank');
-    if (newTab) {
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } else {
-      toonDownloadToast(url, filename);
-    }
-  }, 150);
+  setTimeout(() => URL.revokeObjectURL(url), 5_000);
 }
 
 function toonDownloadToast(url: string, filename: string): void {
