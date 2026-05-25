@@ -1,5 +1,41 @@
+function inIframe(): boolean {
+  try { return window !== window.top; } catch { return true; }
+}
+
+function toonPdfInOverlay(url: string, filename: string): void {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;background:#1e293b';
+
+  const balk = document.createElement('div');
+  balk.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#0f172a;flex-shrink:0';
+
+  const label = document.createElement('span');
+  label.textContent = filename;
+  label.style.cssText = 'color:#e2e8f0;font-size:13px;font-weight:600;font-family:sans-serif';
+
+  const sluit = document.createElement('button');
+  sluit.textContent = 'Sluiten ✕';
+  sluit.style.cssText = 'background:#334155;border:none;color:#e2e8f0;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-family:sans-serif';
+  sluit.onclick = () => { overlay.remove(); URL.revokeObjectURL(url); };
+
+  balk.append(label, sluit);
+
+  const frame = document.createElement('iframe');
+  frame.src = url;
+  frame.style.cssText = 'flex:1;border:none;width:100%;background:white';
+
+  overlay.append(balk, frame);
+  document.body.appendChild(overlay);
+}
+
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
+
+  if (inIframe()) {
+    toonPdfInOverlay(url, filename);
+    return;
+  }
+
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
