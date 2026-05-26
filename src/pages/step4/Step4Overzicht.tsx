@@ -5,6 +5,7 @@ import { totaalM2, totaalAccessoires, globaleWaarschuwingen } from "../../state/
 import { markeerVerzonden } from "../../storage/conceptOpslag";
 import { opnameNaarQuotation } from "../../erpnext/quotationMapper";
 import { laadGeldigeItemCodes, valideerOpname } from "../../erpnext/itemCodeValidation";
+import { zorgDatKlantBestaat } from "../../erpnext/customerSearch";
 import * as bridge from "../../bridge";
 import BladKaart from "./BladKaart";
 
@@ -73,15 +74,35 @@ export default function Step4Overzicht({ state, dispatch, onNavigeer, online = t
       valideerOpname(state);
 
       const payload = opnameNaarQuotation(state);
+
+      // Zorg dat de klant bestaat in ERPNext (aanmaken als nieuw)
+      const klantDocNaam = await zorgDatKlantBestaat(state.opdrachtgever);
+      (payload as unknown as Record<string, unknown>).party_name = klantDocNaam;
+
       const erpUrl = bridge.getErpNextAppUrl();
 
       if (state.quotationName) {
-        await bridge.updateDocument('Quotation', state.quotationName, payload as unknown as Record<string, unknown>);
-        markeerVerzonden();
-        setSucces({
-          naam: state.quotationName,
-          url: `${erpUrl}/app/quotation/${state.quotationName}`,
-        });
+        try {
+          await bridge.updateDocument('Quotation', state.quotationName, payload as unknown as Record<string, unknown>);
+          markeerVerzonden();
+          setSucces({
+            naam: state.quotationName,
+            url: `${erpUrl}/app/quotation/${state.quotationName}`,
+          });
+        } catch (updateErr) {
+          // Quotation verwijderd in ERPNext (bijv. tijdens opruimen) — maak nieuw aan
+          if (updateErr instanceof Error && updateErr.message.includes('404')) {
+            const result = await bridge.createDocument<{ name: string }>('Quotation', payload as unknown as Record<string, unknown>);
+            markeerVerzonden();
+            dispatch({ type: 'SET_QUOTATION_NAME', name: result.name });
+            setSucces({
+              naam: result.name,
+              url: `${erpUrl}/app/quotation/${result.name}`,
+            });
+          } else {
+            throw updateErr;
+          }
+        }
       } else {
         const result = await bridge.createDocument<{ name: string }>('Quotation', payload as unknown as Record<string, unknown>);
         markeerVerzonden();
@@ -114,6 +135,8 @@ export default function Step4Overzicht({ state, dispatch, onNavigeer, online = t
       return 'Selecteer eerst een klant in stap 1';
     if (msg.includes('Opname heeft geen bladen'))
       return 'Voeg eerst een blad toe in stap 2';
+    if (msg.includes('LinkValidation') || msg.includes('does not exist'))
+      return `Klant bestaat niet in ERPNext. Voeg de klant eerst toe als Customer in ERPNext, of controleer de spelling.`;
     if (msg.includes('exc_type'))
       return `ERPNext-fout: ${msg.replace(/.*exc_type.*?:\s*/, '').trim()}`;
     return `Verzenden mislukt: ${msg}`;

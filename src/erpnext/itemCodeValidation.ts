@@ -18,6 +18,11 @@ export async function laadGeldigeItemCodes(): Promise<void> {
         limit_page_length: 1000,
       });
       geldigeItemCodes = new Set(items.map(i => i.item_code));
+    } catch (err) {
+      // Bridge kan item-lijst niet ophalen (bijv. geen Y-App context of 404).
+      // Validatie wordt overgeslagen; ERPNext geeft zelf een fout als het item niet bestaat.
+      console.warn('[kbf] Item code validatie niet beschikbaar:', err);
+      // geldigeItemCodes blijft null → valideerItemCode is no-op
     } finally {
       loadingPromise = null; // reset zodat retry mogelijk is na fout
     }

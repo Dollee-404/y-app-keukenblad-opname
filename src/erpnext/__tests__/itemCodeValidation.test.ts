@@ -76,11 +76,15 @@ describe('laadGeldigeItemCodes — idempotentie', () => {
     expect(fetchList).toHaveBeenCalledTimes(1);
   });
 
-  it('na fout kan opnieuw worden geprobeerd', async () => {
+  it('na fout (bridge 404) wordt validatie overgeslagen en kan opnieuw worden geprobeerd', async () => {
     const fetchList = await getBridgeMock();
-    fetchList.mockRejectedValueOnce(new Error('timeout'));
+    fetchList.mockRejectedValueOnce(new Error('ERPNext API error: 404'));
 
-    await expect(laadGeldigeItemCodes()).rejects.toThrow('timeout');
+    // Mag niet gooien — fout wordt geslokt zodat verzenden door kan gaan
+    await expect(laadGeldigeItemCodes()).resolves.toBeUndefined();
+
+    // Cache is null → valideerItemCode is no-op
+    expect(() => valideerItemCode('ONBEKEND-BLAD-99MM')).not.toThrow();
 
     // loadingPromise is gereset — tweede poging doet nieuwe fetch
     fetchList.mockResolvedValue(GELDIGE_CODES);

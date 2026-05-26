@@ -44,6 +44,46 @@ function parsePostcodePlaats(waarde: string): { pincode: string; city: string } 
   return { pincode: "", city: waarde.trim() };
 }
 
+/**
+ * Zoekt een Customer op exacte naam. Bestaat die niet, dan wordt er een aangemaakt.
+ * Retourneert de ERPNext docname — te gebruiken als party_name in een Quotation.
+ */
+export async function zorgDatKlantBestaat(opdrachtgever: {
+  naam: string;
+  straat?: string;
+  postcodePlaats?: string;
+  email?: string;
+  telefoon?: string;
+}): Promise<string> {
+  const bestaand = await fetchList<{ name: string }>("Customer", {
+    fields: ["name"],
+    filters: [["customer_name", "=", opdrachtgever.naam], ["disabled", "=", 0]],
+    limit_page_length: 1,
+  });
+  if (bestaand[0]) return bestaand[0].name;
+
+  const nieuw = await createDocument<{ name: string }>("Customer", {
+    customer_name: opdrachtgever.naam,
+    customer_type: "Individual",
+    ...(opdrachtgever.email ? { email_id: opdrachtgever.email } : {}),
+    ...(opdrachtgever.telefoon ? { mobile_no: opdrachtgever.telefoon } : {}),
+  });
+
+  if (opdrachtgever.straat || opdrachtgever.postcodePlaats) {
+    const { pincode, city } = parsePostcodePlaats(opdrachtgever.postcodePlaats ?? "");
+    await createDocument("Address", {
+      address_title: opdrachtgever.naam,
+      address_type: "Billing",
+      address_line1: opdrachtgever.straat ?? "",
+      pincode,
+      city,
+      links: [{ link_doctype: "Customer", link_name: nieuw.name }],
+    });
+  }
+
+  return nieuw.name;
+}
+
 export async function createCustomerWithAddress(klant: NieuweKlant): Promise<{ name: string }> {
   const customer = await createDocument<{ name: string }>("Customer", {
     customer_name: klant.naam,

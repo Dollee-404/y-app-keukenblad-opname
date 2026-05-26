@@ -87,29 +87,39 @@ export function genereerZaagbrief(opname: Opname): Blob {
   // ── Zone 3: Bladen-lijst ──────────────────────────────────────────────────
   for (const blad of opname.bladen) {
     const mat    = { ...opname.materiaal, ...blad.materiaalOverride };
-    const kleur  = opname.materiaalKeuze?.kleur_label ?? mat.kleur ?? '';
-    const matStr = [kleur, mat.afwerking, mat.soort].filter(s => s?.trim()).join(' ');
+    const keuze  = blad.materiaalKeuze ?? opname.materiaalKeuze;
+    const kleur  = keuze?.kleur_label ?? mat.kleur ?? '';
+    const soort  = keuze?.soort ?? mat.soort ?? '';
+    const dikte  = keuze?.dikte_mm ?? blad.dikte ?? '';
+    const matStr = [kleur, soort, dikte ? `${dikte}mm` : ''].filter(s => s?.trim()).join('  ');
 
     const randafwerkingen = blad.randafwerkingen ?? [];
-    const sparingen       = (opname.sparingen ?? []).filter(s => s.bladId === blad.id);
+    const sparingen       = blad.sparingen ?? [];
     const sparingRegels   = sparingen
       .map(s => omschrijvingVoorSparing(s))
       .filter((s): s is string => s !== null);
 
-    const blokH = (2 + randafwerkingen.length + sparingRegels.length + 1) * LINE_H;
+    const blokH = (3 + randafwerkingen.length + sparingRegels.length + 1) * LINE_H;
     if (y + blokH > BOTTOM_Y) {
       doc.addPage('a4', 'portrait');
       y = 15;
     }
 
-    // Materiaal + afmetingen
+    // Blad-label
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(0);
+    doc.text(blad.label ?? blad.werkstukType ?? 'Blad', MARGIN_X, y);
+    y += LINE_H;
+
+    // Materiaal
     doc.text('Materiaal:', MARGIN_X, y);
+    doc.setFont('helvetica', 'normal');
     doc.text(matStr, MARGIN_X + LABEL_W, y);
     y += LINE_H;
 
+    // Afmetingen
+    doc.setFont('helvetica', 'bold');
     doc.text(`Lengte: ${blad.lengte}  Breedte: ${blad.breedte}`, MARGIN_X + LABEL_W, y);
     y += LINE_H;
 

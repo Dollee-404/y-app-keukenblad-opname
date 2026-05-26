@@ -3,7 +3,7 @@ import seedRaw from "../data/seed-data.json";
 import type { SeedData } from "../data/seed-types";
 import type { OpnameAction } from "../state/opnameReducer";
 import type { Opname } from "../data/seed-types";
-import { searchCustomers, createCustomerWithAddress } from "../erpnext/customerSearch";
+import { searchCustomers } from "../erpnext/customerSearch";
 import type { CustomerSummary } from "../erpnext/customerSearch";
 import { IN_YAPP_CONTEXT, callMethod } from "../bridge";
 
@@ -29,12 +29,6 @@ export default function Step1Klant({ state, dispatch }: Props) {
   const [zoekResultaten, setZoekResultaten] = useState<CustomerSummary[]>([]);
   const [zoekLaden, setZoekLaden] = useState(false);
   const [zoekFout, setZoekFout] = useState<string | null>(null);
-
-  // — Aanmaken —
-  const [klantType, setKlantType] = useState<"Company" | "Individual">("Company");
-  const [aanmaakLaden, setAanmaakLaden] = useState(false);
-  const [aanmaakFout, setAanmaakFout] = useState<string | null>(null);
-  const [aanmaakOk, setAanmaakOk] = useState<string | null>(null);
 
   // Inmeter default = ingelogde Y-App gebruiker
   useEffect(() => {
@@ -89,29 +83,6 @@ export default function Step1Klant({ state, dispatch }: Props) {
     });
     setZoekQuery(klant.customer_name);
     setZoekResultaten([]);
-  }
-
-  async function maakKlantAan() {
-    const naam = state.opdrachtgever.naam.trim();
-    if (!naam) return;
-    setAanmaakLaden(true);
-    setAanmaakFout(null);
-    setAanmaakOk(null);
-    try {
-      const result = await createCustomerWithAddress({
-        naam,
-        type: klantType,
-        straat: state.opdrachtgever.straat,
-        postcodePlaats: state.opdrachtgever.postcodePlaats,
-        email: state.opdrachtgever.email,
-        telefoon: state.opdrachtgever.telefoon,
-      });
-      setAanmaakOk(`Klant aangemaakt: ${result.name}`);
-    } catch (e) {
-      setAanmaakFout(e instanceof Error ? e.message : "Aanmaken mislukt");
-    } finally {
-      setAanmaakLaden(false);
-    }
   }
 
   const gelijkAanOpdrachtgever = state.afleveradres.gelijkAanOpdrachtgever;
@@ -247,22 +218,6 @@ export default function Step1Klant({ state, dispatch }: Props) {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Zakelijk / Particulier toggle */}
-            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-              {(["Company", "Individual"] as const).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setKlantType(type)}
-                  className={[
-                    "flex-1 min-h-[44px] text-sm font-medium transition-colors",
-                    klantType === type ? "bg-teal-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50",
-                  ].join(" ")}
-                >
-                  {type === "Company" ? "Zakelijk" : "Particulier"}
-                </button>
-              ))}
-            </div>
-
             {(["naam", "straat", "postcodePlaats"] as const).map((veld) => (
               <div key={veld}>
                 <label className={labelKlasse}>
@@ -295,25 +250,6 @@ export default function Step1Klant({ state, dispatch }: Props) {
               />
             </div>
 
-            {/* Klant aanmaken in ERPNext */}
-            <div className="pt-2 border-t border-slate-100">
-              <button
-                onClick={maakKlantAan}
-                disabled={!state.opdrachtgever.naam.trim() || aanmaakLaden || !IN_YAPP_CONTEXT}
-                className="w-full min-h-[44px] bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {aanmaakLaden ? "Aanmaken..." : "Klant aanmaken in ERPNext"}
-              </button>
-              {!IN_YAPP_CONTEXT && (
-                <p className="mt-1 text-xs text-slate-400 text-center">Alleen beschikbaar in Y-App context</p>
-              )}
-              {aanmaakFout && (
-                <p className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{aanmaakFout}</p>
-              )}
-              {aanmaakOk && (
-                <p className="mt-2 text-sm text-teal-700 bg-teal-50 border border-teal-200 rounded px-3 py-2">{aanmaakOk}</p>
-              )}
-            </div>
           </div>
         )}
       </section>

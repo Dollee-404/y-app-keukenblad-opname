@@ -39,7 +39,7 @@ export function genereerWerkplaatstekening(
     }
 
     const vp            = orientatie === 'landscape' ? computeViewportLandscape(blad) : computeViewport(blad);
-    const bladSparingen = (opname.sparingen ?? []).filter(s => s.bladId === blad.id);
+    const bladSparingen = blad.sparingen ?? [];
     const boorgaten     = blad.boorgaten ?? [];
     const paginaInfo    = { paginaNr: idx + 1, totaalPaginas: bladen.length };
 

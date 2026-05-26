@@ -87,11 +87,11 @@ export function maakLVormBlad(): Blad {
 }
 
 export function maakRechthoekOpname(): Opname {
-  const blad = maakRechthoekBlad();
+  const blad = maakRechthoekBlad({ sparingen: [maakKookplaatSparing('blad-rechthoek')] });
   return baseOpname({
     ordernummer: 'TEST-RECHTHOEK',
     bladen: [blad],
-    sparingen: [maakKookplaatSparing(blad.id)],
+    sparingen: [],
   });
 }
 
