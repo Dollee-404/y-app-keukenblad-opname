@@ -1,4 +1,5 @@
 import type { Blad, Sparing, Randafwerking } from '../data/seed-types';
+import { bladZijden } from '../drawing/bladZijdenHelpers';
 
 export function omschrijvingVoorCode(code: string): string {
   const dvMatch = code.match(/^DV(\d+)$/);
@@ -26,8 +27,9 @@ export function omschrijvingVoorSparing(sparing: Sparing): string | null {
   return null;
 }
 
-export function berekenM2VoorRand(_blad: Blad, _rand: Randafwerking): number {
-  // TODO: opdrachtgever levert formule
-  // Vasto toont 1,86/1,00/1,96 voor randen op 1958×1001×20mm blad — niet te reverse-engineeren.
-  return 0;
+export function berekenM2VoorRand(blad: Blad, rand: Randafwerking): number {
+  const zijden = bladZijden(blad);
+  const zijde  = zijden.find(z => z.id === rand.zijdeId);
+  if (!zijde) return 0;
+  return Math.round((zijde.lengte_mm / 1000) * 100) / 100;
 }

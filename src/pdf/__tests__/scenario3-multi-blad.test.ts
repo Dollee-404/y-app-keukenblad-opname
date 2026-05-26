@@ -46,10 +46,10 @@ describe('Scenario 3 — multi-blad opname', () => {
       expect(tekst).toContain('Lengte: 2760');
     });
 
-    it('PDF bevat minstens 3x "0,00" als m2-placeholder', async () => {
+    it('PDF bevat randafwerking-lengtes als decimaal getal (niet meer 0,00)', async () => {
       const tekst = await pdfTekst(genereerZaagbrief(opname));
-      const aantalNul = (tekst.match(/0,00/g) ?? []).length;
-      expect(aantalNul).toBeGreaterThanOrEqual(3);
+      expect(tekst).toMatch(/Afwerking:/);
+      expect(tekst).not.toMatch(/\b0,00\b/);
     });
   });
 });
