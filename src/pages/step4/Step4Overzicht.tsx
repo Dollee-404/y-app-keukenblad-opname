@@ -6,7 +6,7 @@ import { markeerVerzonden } from "../../storage/conceptOpslag";
 import { opnameNaarQuotation } from "../../erpnext/quotationMapper";
 import { laadGeldigeItemCodes, valideerOpname } from "../../erpnext/itemCodeValidation";
 import { zorgDatKlantBestaat } from "../../erpnext/customerSearch";
-import * as bridge from "../../bridge";
+import * as bridge from "../../erpnextClient";
 import BladKaart from "./BladKaart";
 
 interface Props {

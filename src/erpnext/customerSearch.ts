@@ -1,4 +1,4 @@
-import { fetchList, createDocument } from "../bridge";
+import { fetchList, createDocument } from "../erpnextClient";
 
 export interface CustomerSummary {
   name: string;

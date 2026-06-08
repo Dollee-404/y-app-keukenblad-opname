@@ -10,8 +10,8 @@ export async function laadGeldigeItemCodes(): Promise<void> {
 
   loadingPromise = (async () => {
     try {
-      // Lazy import zodat window-referentie in bridge.ts niet triggert buiten browser
-      const { fetchList } = await import('../bridge.js');
+      // Lazy import zodat window-referentie in erpnextClient.ts niet triggert buiten browser
+      const { fetchList } = await import('../erpnextClient.js');
       const items = await fetchList<{ item_code: string }>('Item', {
         fields: ['item_code'],
         filters: [['item_code', 'like', '%-BLAD-%']],

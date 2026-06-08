@@ -5,7 +5,7 @@ import type { OpnameAction } from "../state/opnameReducer";
 import type { Opname } from "../data/seed-types";
 import { searchCustomers } from "../erpnext/customerSearch";
 import type { CustomerSummary } from "../erpnext/customerSearch";
-import { IN_YAPP_CONTEXT, callMethod } from "../bridge";
+import { IN_YAPP_CONTEXT, callMethod } from "../erpnextClient";
 
 const seed = seedRaw as unknown as SeedData;
 

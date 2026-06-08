@@ -7,13 +7,13 @@ import {
 } from '../itemCodeValidation.js';
 import type { Opname } from '../../data/seed-types.js';
 
-// Vitest hoist — mockt zowel statische als dynamische imports van bridge.js
-vi.mock('../../bridge.js', () => ({
+// Vitest hoist — mockt zowel statische als dynamische imports van erpnextClient.js
+vi.mock('../../erpnextClient.js', () => ({
   fetchList: vi.fn(),
 }));
 
 async function getBridgeMock() {
-  const { fetchList } = await import('../../bridge.js');
+  const { fetchList } = await import('../../erpnextClient.js');
   return vi.mocked(fetchList);
 }
 
