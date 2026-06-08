@@ -1,3 +1,3 @@
-import { expect } from "vitest";
-import * as matchers from "@testing-library/jest-dom/matchers";
-expect.extend(matchers);
+// /vitest-entry: registreert de jest-dom-matchers op expect (runtime) én
+// augmenteert het vitest Assertion-type, zodat tsc toBeInTheDocument c.s. kent.
+import "@testing-library/jest-dom/vitest";
